@@ -1,57 +1,118 @@
-[Documentation Home](README.md)
+# 📚 quantico-ai-agency Documentation
+
+Welcome to the complete documentation for this repository. This documentation is automatically generated and maintained by Woden Docbot.
+
+![Health: Healthy](https://img.shields.io/badge/Health-Healthy-green) ![Files Documented: 16](https://img.shields.io/badge/Files_Documented-16-blue) ![Coverage: 100](https://img.shields.io/badge/Coverage-100-green) ![Last Updated: 2026-07-04](https://img.shields.io/badge/Last_Updated-2026--07--04-gray)
+
+## 🔗 Quick Links
+
+[📂 quantico-ai](./quantico-ai/README.md)
+[📋 Dependencies](./DEPENDENCIES.md)
+
 
 ---
 
-# 📁 _docs
-
-> **Purpose:** A top-level documentation directory that groups documentation artifacts; currently contains no root files and one subdirectory holding a documented file.
-> 
-
-![Organization: Hierarchical](https://img.shields.io/badge/Organization-Hierarchical-blue)
-
-## 📑 Table of Contents
+> A clean-room AI gateway composed of a shell startup script and TypeScript modules that bootstrap HTTP routing, authentication middleware, and agent implementations.
 
 
-- [Overview](#overview)
-- [Subdirectories](#subdirectories)
-- [Architecture Notes](#architecture-notes)
+
+## 📖 Overview
+
+quantico-ai-agency provides the Quantico-AI gateway entrypoint and the focused configuration and source code needed to bootstrap and run a clean-room AI gateway. The repository exposes a simple start.sh startup script to invoke the gateway, TypeScript configuration modules (e.g., defaults.ts) that supply baseline values, and a TypeScript application entry point that composes the runtime.
+
+The src/ layer (index.ts and grouped implementations) wires HTTP routing, authentication middleware, agent implementations, and type definitions and consumes values from the config/ modules. start.sh is intended to be the initial invocation point for development or deployment; config supplies defaults imported by the application; src composes the server and runtime behavior to provide a cohesive bootstrapping flow.
+
+This layout is targeted at developers and operators who need a local or deployable gateway process they can start, configure, and extend by adjusting configuration modules and the TypeScript application layers.
+
+
+### 🧩 Key Components
+
+| Component | Purpose | Technologies |
+| --- | --- | --- |
+| **Gateway Entrypoint (start.sh)** | Simple shell-based startup script that acts as the initial invocation point to launch or orchestrate the Quantico-AI gateway process in development or deployment environments. | `Shell script` |
+| **Configuration (config)** | TypeScript configuration modules (notably defaults.ts) that provide baseline configuration values and constants used across the gateway to control runtime defaults and behavior. | `TypeScript` |
+| **Application Source (src)** | TypeScript application entry point (index.ts) and grouped implementation layers that compose HTTP routing, authentication middleware, agent implementations, and type definitions to bootstrap the gateway runtime. | `TypeScript` |
+
+
+
+
+**Component Architecture:**
+
+```mermaid
+graph TD
+    C0[Gateway Entrypoint (start.sh)]
+    C1[Configuration (config)]
+    C2[Application Source (src)]
+    C0 --> C1
+    C1 --> C2
+```
+
+### 🏗️ Architecture
+
+A single gateway process bootstrapped by a shell startup script and implemented in TypeScript. The layout uses configuration modules imported by a TypeScript application entry point that composes routing, middleware, and agent layers to form the gateway runtime.
+
+### 💡 Use Cases
+
+- ✦ Launch and run a local or deployed clean-room AI gateway process for development or deployment
+- ✦ Provide and override baseline configuration through TypeScript modules (defaults.ts) to control gateway behavior
+- ✦ Develop and extend gateway functionality by modifying the TypeScript application layers (routing, authentication middleware, agent implementations, and types)
+
+
+
+### 🔧 Technologies
+
+
+**Languages:** ![TypeScript: ](https://img.shields.io/badge/TypeScript--blue)
+![Shell script: ](https://img.shields.io/badge/Shell_script--blue)
 
 ---
 
-## Overview
+## 📑 Documentation Sections
 
-This _docs directory is intended to hold project documentation and related artifacts. At the root level there are no documents or files stored currently, so there are no immediate entry-point documents in this directory itself. The directory's primary content is organized into subdirectories.
+### [quantico-ai](./quantico-ai/README.md)
+Contains the Quantico-AI gateway entrypoint and the related configuration and source code modules that bootstrap and configure the clean-room AI gateway.
 
-The quantico-ai/ subdirectory is present and contains one documented file (purpose: "Contains 1 documented file"). Together, the structure indicates that documentation is grouped by topic or component into subdirectories rather than placed at the _docs root. This directory acts as a container and navigational starting point for documentation housed under its subdirectories, and its role in the larger system is to centralize documentation assets so developers know to look here for component- or feature-specific docs.
 
-
-### File Organization
-
-There are no files at the _docs root; documentation is organized into subdirectories. Each subdirectory (for example, quantico-ai/) represents a focused documentation area and contains its own documented files. This hierarchy keeps root clutter low and groups related documentation together for easier navigation.
-
-## 📂 Subdirectories
-
-This directory contains the following subdirectories:
-
-### [📁 quantico-ai](./quantico-ai/README.md)
-
-**Purpose:** Contains 1 documented file
+This directory contains the startup entrypoint for the Quantico-AI Agency gateway and two focused subdirectories that hold the gateway's default configuration and application entry point code.
 
 ![Files: 1](https://img.shields.io/badge/Files-1-blue)
 
 ---
-## Architecture Notes
 
-- Documentation is organized hierarchically: the _docs root acts as a container and subdirectories hold topic-specific files.
-- No root-level documentation files are present, so subdirectories are the primary access points for documented content.
+## 📊 Documentation Statistics
 
----
-
-## Navigation
-
-**↑ Parent Directory:** [Go up](../README.md)
-**🔗 Related:** [quantico-ai](./quantico-ai/README.md)
+- **Files Documented**: 16
+- **Directories**: 9
+- **Coverage**: 100%
+- **Last Updated**: 2026-07-04
 
 ---
 
-*Generated by Woden Docbot*
+## 🧭 How to Navigate
+
+> ℹ️ **INFO**
+> Each directory has its own README.md with detailed information about that section. Use the breadcrumb navigation at the top of each page to navigate back to parent directories.
+
+### Navigation Features
+
+- **Breadcrumbs** - At the top of each page, showing your current location
+- **Directory READMEs** - Each folder has a comprehensive overview
+- **File Documentation** - Click through to individual file documentation
+- **Search** - Use GitHub's search or your IDE's search functionality
+
+---
+
+## 🤖 About Woden DocBot
+
+This documentation is automatically generated and kept up-to-date by Woden DocBot, an AI-powered documentation assistant. DocBot analyzes code on every pull request and updates documentation to reflect changes.
+
+### Features
+
+- **Automatic Updates** - Documentation updates on every PR
+- **Comprehensive Coverage** - Files, functions, classes, and directories
+- **Smart Navigation** - Breadcrumbs, related files, and parent links
+- **AI-Powered** - Uses Azure GPT models for intelligent documentation generation
+
+---
+
+*Generated by Woden DocBot for quantico-ai-agency*
