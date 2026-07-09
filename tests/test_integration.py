@@ -25,7 +25,7 @@ def _make_config(root: Path, **overrides) -> AgentConfig:
         workspace=root,
         max_depth=3,
         max_steps_per_call=12,
-        session_root_dir=".openplanter",
+        session_root_dir=".quantico",
         max_persisted_observations=400,
         acceptance_criteria=False,
     )
@@ -49,7 +49,7 @@ def _make_runtime(
 
 
 def _read_events(root: Path, session_id: str) -> list[dict]:
-    events_path = root / ".openplanter" / "sessions" / session_id / "events.jsonl"
+    events_path = root / ".quantico" / "sessions" / session_id / "events.jsonl"
     events = []
     for line in events_path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
@@ -59,7 +59,7 @@ def _read_events(root: Path, session_id: str) -> list[dict]:
 
 
 def _read_state(root: Path, session_id: str) -> dict:
-    state_path = root / ".openplanter" / "sessions" / session_id / "state.json"
+    state_path = root / ".quantico" / "sessions" / session_id / "state.json"
     return json.loads(state_path.read_text(encoding="utf-8"))
 
 
@@ -420,7 +420,7 @@ class TestSessionDirectoryStructure(unittest.TestCase):
             runtime = _make_runtime(root, cfg, turns, "dir-struct")
             runtime.solve("verify directory structure")
 
-            session_dir = root / ".openplanter" / "sessions" / "dir-struct"
+            session_dir = root / ".quantico" / "sessions" / "dir-struct"
             self.assertTrue((session_dir / "metadata.json").exists())
             self.assertTrue((session_dir / "state.json").exists())
             self.assertTrue((session_dir / "events.jsonl").exists())

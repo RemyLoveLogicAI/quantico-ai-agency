@@ -21,7 +21,7 @@ class SessionRuntimeTests(unittest.TestCase):
                 workspace=root,
                 max_depth=2,
                 max_steps_per_call=5,
-                session_root_dir=".openplanter",
+                session_root_dir=".quantico",
                 max_persisted_observations=50,
             )
 
@@ -41,7 +41,7 @@ class SessionRuntimeTests(unittest.TestCase):
             result1 = runtime1.solve("write a note")
             self.assertEqual(result1, "first done")
 
-            state_path = root / ".openplanter" / "sessions" / "session-a" / "state.json"
+            state_path = root / ".quantico" / "sessions" / "session-a" / "state.json"
             self.assertTrue(state_path.exists())
             state = json.loads(state_path.read_text(encoding="utf-8"))
             obs = state.get("external_observations", [])
@@ -68,7 +68,7 @@ class SessionRuntimeTests(unittest.TestCase):
                 workspace=root,
                 max_depth=1,
                 max_steps_per_call=4,
-                session_root_dir=".openplanter",
+                session_root_dir=".quantico",
             )
             model = ScriptedModel(
                 scripted_turns=[
@@ -98,7 +98,7 @@ class SessionRuntimeTests(unittest.TestCase):
             result = runtime.solve("add file with patch")
             self.assertEqual(result, "ok")
 
-            patch_dir = root / ".openplanter" / "sessions" / "session-patch" / "artifacts" / "patches"
+            patch_dir = root / ".quantico" / "sessions" / "session-patch" / "artifacts" / "patches"
             patches = sorted(patch_dir.glob("*.patch"))
             self.assertGreaterEqual(len(patches), 1)
 

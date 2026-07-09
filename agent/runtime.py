@@ -36,7 +36,7 @@ def _safe_component(text: str) -> str:
 @dataclass
 class SessionStore:
     workspace: Path
-    session_root_dir: str = ".openplanter"
+    session_root_dir: str = ".quantico"
 
     def __post_init__(self) -> None:
         self.workspace = self.workspace.expanduser().resolve()
@@ -190,7 +190,7 @@ class SessionStore:
 
 
 def _seed_wiki(workspace: Path, session_root_dir: str) -> None:
-    """Copy baseline wiki/ into the runtime .openplanter/wiki/ directory.
+    """Copy baseline wiki/ into the runtime .quantico/wiki/ directory.
 
     On first run, copies the entire tree. On subsequent runs, copies only
     new baseline files — never overwrites agent-modified entries.

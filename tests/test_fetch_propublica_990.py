@@ -36,7 +36,7 @@ class TestPropublica990Fetch(unittest.TestCase):
             # Quick connectivity check
             req = urllib.request.Request(
                 f"{fetch_propublica_990.API_BASE}/search.json?q=test",
-                headers={"User-Agent": "OpenPlanter-Test/1.0"},
+                headers={"User-Agent": "Quantico-Test/1.0"},
             )
             with urllib.request.urlopen(req, timeout=5):
                 pass

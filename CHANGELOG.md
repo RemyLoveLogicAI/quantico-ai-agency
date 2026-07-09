@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2 (2026-07-09)
+
+- Rebranded the Python agent codebase from `OpenPlanter` to `Quantico`.
+- Removed the deprecated `openplanter-agent` console script alias.
+- Updated session/config directories, user agent strings, prompts, and TUI art.
+
 ## 0.1.1 (2026-07-09)
 
 - Rebranded the desktop bundle from `OpenPlanter` to `Quantico`.

@@ -979,7 +979,7 @@ class RLMEngine:
 
     def _list_artifacts(self) -> str:
         """List available artifacts."""
-        artifacts_dir = self.config.workspace / ".openplanter_artifacts"
+        artifacts_dir = self.config.workspace / ".quantico_artifacts"
         if not artifacts_dir.exists():
             return "No artifacts found."
         entries = sorted(artifacts_dir.glob("*.jsonl"))
@@ -1000,7 +1000,7 @@ class RLMEngine:
 
     def _read_artifact(self, artifact_id: str, offset: int = 0, limit: int = 100) -> str:
         """Read an artifact's conversation log."""
-        artifacts_dir = self.config.workspace / ".openplanter_artifacts"
+        artifacts_dir = self.config.workspace / ".quantico_artifacts"
         path = artifacts_dir / f"{artifact_id}.jsonl"
         if not path.exists():
             return f"Artifact '{artifact_id}' not found."

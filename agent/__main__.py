@@ -26,8 +26,8 @@ VALID_REASONING_FLAGS = ["low", "medium", "high", "none"]
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="openplanter-agent",
-        description="OpenPlanter coding agent with terminal UI.",
+        prog="quantico-agent",
+        description="Quantico coding agent with terminal UI.",
     )
     parser.add_argument("--workspace", default=".", help="Workspace root directory.")
     parser.add_argument(
@@ -44,7 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--default-model",
-        help="Persist workspace default model in .openplanter/settings.json.",
+        help="Persist workspace default model in .quantico/settings.json.",
     )
     parser.add_argument(
         "--default-reasoning-effort",
@@ -120,7 +120,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--list-sessions",
         action="store_true",
-        help="List known sessions in .openplanter and exit.",
+        help="List known sessions in .quantico and exit.",
     )
     parser.add_argument(
         "--list-models",
@@ -337,7 +337,7 @@ def run_plain_repl(ctx: ChatContext) -> None:
     def _out(text: str) -> None:
         print(censor_fn(text) if censor_fn else text)
 
-    _out("OpenPlanter Agent (plain mode). Type /quit to exit.")
+    _out("Quantico Agent (plain mode). Type /quit to exit.")
     while True:
         try:
             objective = input("you> ").strip()
@@ -397,17 +397,17 @@ def _apply_persistent_settings(
     if changed:
         store.save(settings)
         settings = settings.normalized()
-        print("Saved persistent defaults to .openplanter/settings.json")
+        print("Saved persistent defaults to .quantico/settings.json")
 
     if (
         args.model is None
-        and not os.getenv("OPENPLANTER_MODEL")
+        and not os.getenv("QUANTICO_MODEL")
         and settings.default_model
     ):
         cfg.model = settings.default_model
     if (
         args.reasoning_effort is None
-        and not os.getenv("OPENPLANTER_REASONING_EFFORT")
+        and not os.getenv("QUANTICO_REASONING_EFFORT")
         and settings.default_reasoning_effort
     ):
         cfg.reasoning_effort = settings.default_reasoning_effort
@@ -599,7 +599,7 @@ def main() -> None:
         from .textual_tui import run_textual_app
     except ImportError:
         if args.textual:
-            print("Textual TUI requires extra dependencies: pip install openplanter-agent[textual]")
+            print("Textual TUI requires extra dependencies: pip install quantico-agent[textual]")
             raise SystemExit(1)
         run_textual_app = None  # type: ignore[assignment]
 

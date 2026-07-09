@@ -14,7 +14,7 @@ class SettingsTests(unittest.TestCase):
     def test_settings_roundtrip(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            store = SettingsStore(workspace=root, session_root_dir=".openplanter")
+            store = SettingsStore(workspace=root, session_root_dir=".quantico")
             settings = PersistentSettings(
                 default_model="gpt-5.2",
                 default_reasoning_effort="high",
@@ -34,7 +34,7 @@ class SettingsTests(unittest.TestCase):
     def test_per_provider_model_roundtrip(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            store = SettingsStore(workspace=root, session_root_dir=".openplanter")
+            store = SettingsStore(workspace=root, session_root_dir=".quantico")
             settings = PersistentSettings(
                 default_model="global-model",
                 default_model_openai="gpt-4.1-mini",
@@ -70,7 +70,7 @@ class SettingsTests(unittest.TestCase):
     def test_per_provider_model_ollama(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            store = SettingsStore(workspace=root, session_root_dir=".openplanter")
+            store = SettingsStore(workspace=root, session_root_dir=".quantico")
             settings = PersistentSettings(
                 default_model_ollama="mistral",
             )
@@ -90,7 +90,7 @@ class SettingsTests(unittest.TestCase):
         import json
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            store = SettingsStore(workspace=root, session_root_dir=".openplanter")
+            store = SettingsStore(workspace=root, session_root_dir=".quantico")
             # Write old-format JSON (no provider keys).
             old_data = {"default_model": "old-model", "default_reasoning_effort": "high"}
             store.settings_path.write_text(json.dumps(old_data), encoding="utf-8")

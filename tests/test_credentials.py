@@ -36,7 +36,7 @@ class CredentialTests(unittest.TestCase):
     def test_store_roundtrip(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            store = CredentialStore(workspace=root, session_root_dir=".openplanter")
+            store = CredentialStore(workspace=root, session_root_dir=".quantico")
             creds = CredentialBundle(
                 openai_api_key="oa",
                 anthropic_api_key="an",

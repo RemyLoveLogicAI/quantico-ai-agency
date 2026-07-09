@@ -49,7 +49,7 @@ WIKI_DIR = Path(__file__).resolve().parent.parent / "wiki"
 def wiki_dir():
     """Return the committed baseline wiki/ directory for parser tests.
 
-    At runtime the wiki lives at {workspace}/.openplanter/wiki/, seeded
+    At runtime the wiki lives at {workspace}/.quantico/wiki/, seeded
     from this baseline.  Tests here validate the parser against the
     baseline content which is identical in structure.
     """

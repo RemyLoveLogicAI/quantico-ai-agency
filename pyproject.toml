@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "quantico-agent"
-version = "0.1.0"
+version = "0.1.2"
 description = "Quantico AI Agency — a recursive LLM investigation agent for financial forensics."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -27,7 +27,6 @@ test = [
 
 [project.scripts]
 quantico-agent = "agent.__main__:main"
-openplanter-agent = "agent.__main__:main"
 
 [tool.setuptools.packages.find]
-include = ["agent*"]
+include = ["agent*", "scripts*"]

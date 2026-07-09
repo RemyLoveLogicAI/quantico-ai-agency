@@ -19,7 +19,7 @@ def _make_config(root: Path, **overrides) -> AgentConfig:
         workspace=root,
         max_depth=2,
         max_steps_per_call=12,
-        session_root_dir=".openplanter",
+        session_root_dir=".quantico",
         max_persisted_observations=400,
     )
     defaults.update(overrides)
@@ -74,7 +74,7 @@ class SessionComplexTests(unittest.TestCase):
             obs_after_second = len(runtime.context.observations)
             self.assertGreater(obs_after_second, obs_after_first)
 
-            state_path = root / ".openplanter" / "sessions" / "accum" / "state.json"
+            state_path = root / ".quantico" / "sessions" / "accum" / "state.json"
             state = json.loads(state_path.read_text(encoding="utf-8"))
             self.assertEqual(
                 len(state["external_observations"]), obs_after_second
@@ -101,7 +101,7 @@ class SessionComplexTests(unittest.TestCase):
             runtime.solve("generate many observations")
 
             state_path = (
-                root / ".openplanter" / "sessions" / "trim-test" / "state.json"
+                root / ".quantico" / "sessions" / "trim-test" / "state.json"
             )
             state = json.loads(state_path.read_text(encoding="utf-8"))
             obs = state.get("external_observations", [])
@@ -180,7 +180,7 @@ class SessionComplexTests(unittest.TestCase):
             runtime.solve("test events")
 
             events_path = (
-                root / ".openplanter" / "sessions" / "evlog" / "events.jsonl"
+                root / ".quantico" / "sessions" / "evlog" / "events.jsonl"
             )
             self.assertTrue(events_path.exists())
 
@@ -230,7 +230,7 @@ class SessionComplexTests(unittest.TestCase):
 
             patch_dir = (
                 root
-                / ".openplanter"
+                / ".quantico"
                 / "sessions"
                 / "multi-patch"
                 / "artifacts"
@@ -396,7 +396,7 @@ class SessionComplexTests(unittest.TestCase):
 
             # Verify events include an artifact event
             events_path = (
-                root / ".openplanter" / "sessions" / "patch-fmt" / "events.jsonl"
+                root / ".quantico" / "sessions" / "patch-fmt" / "events.jsonl"
             )
             events = []
             for line in events_path.read_text(encoding="utf-8").splitlines():

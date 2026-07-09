@@ -25,9 +25,9 @@ class WikiSeedTests(unittest.TestCase):
                 "template.md": "# Template",
                 "campaign-finance/ocpf.md": "OCPF data",
             })
-            _seed_wiki(root, ".openplanter")
+            _seed_wiki(root, ".quantico")
 
-            runtime_wiki = root / ".openplanter" / "wiki"
+            runtime_wiki = root / ".quantico" / "wiki"
             self.assertTrue(runtime_wiki.exists())
             self.assertEqual(
                 (runtime_wiki / "index.md").read_text(), "# Index",
@@ -46,10 +46,10 @@ class WikiSeedTests(unittest.TestCase):
             self._make_baseline(root, {"index.md": "baseline content"})
 
             # First seed
-            _seed_wiki(root, ".openplanter")
+            _seed_wiki(root, ".quantico")
 
             # Agent modifies runtime copy
-            runtime_index = root / ".openplanter" / "wiki" / "index.md"
+            runtime_index = root / ".quantico" / "wiki" / "index.md"
             runtime_index.write_text("agent modified", encoding="utf-8")
 
             # Update baseline
@@ -58,17 +58,17 @@ class WikiSeedTests(unittest.TestCase):
             )
 
             # Re-seed — should NOT overwrite agent's version
-            _seed_wiki(root, ".openplanter")
+            _seed_wiki(root, ".quantico")
             self.assertEqual(runtime_index.read_text(), "agent modified")
 
     def test_incremental_new_files_added(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             self._make_baseline(root, {"index.md": "# Index"})
-            _seed_wiki(root, ".openplanter")
+            _seed_wiki(root, ".quantico")
 
             # Modify the runtime copy so we can verify it's preserved
-            runtime_index = root / ".openplanter" / "wiki" / "index.md"
+            runtime_index = root / ".quantico" / "wiki" / "index.md"
             runtime_index.write_text("agent version", encoding="utf-8")
 
             # Add a new baseline file
@@ -77,12 +77,12 @@ class WikiSeedTests(unittest.TestCase):
                 "contracts/new-source.md": "new source data",
             })
 
-            _seed_wiki(root, ".openplanter")
+            _seed_wiki(root, ".quantico")
 
             # Existing file preserved
             self.assertEqual(runtime_index.read_text(), "agent version")
             # New file copied
-            new_file = root / ".openplanter" / "wiki" / "contracts" / "new-source.md"
+            new_file = root / ".quantico" / "wiki" / "contracts" / "new-source.md"
             self.assertTrue(new_file.exists())
             self.assertEqual(new_file.read_text(), "new source data")
 
@@ -90,8 +90,8 @@ class WikiSeedTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             # No wiki/ directory at all
-            _seed_wiki(root, ".openplanter")
-            self.assertFalse((root / ".openplanter" / "wiki").exists())
+            _seed_wiki(root, ".quantico")
+            self.assertFalse((root / ".quantico" / "wiki").exists())
 
     def test_hidden_dirs_excluded(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -106,9 +106,9 @@ class WikiSeedTests(unittest.TestCase):
             pycache.parent.mkdir(parents=True, exist_ok=True)
             pycache.write_text("bytecode", encoding="utf-8")
 
-            _seed_wiki(root, ".openplanter")
+            _seed_wiki(root, ".quantico")
 
-            runtime_wiki = root / ".openplanter" / "wiki"
+            runtime_wiki = root / ".quantico" / "wiki"
             self.assertTrue((runtime_wiki / "index.md").exists())
             self.assertFalse((runtime_wiki / ".pytest_cache").exists())
             self.assertFalse((runtime_wiki / "__pycache__").exists())

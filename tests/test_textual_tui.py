@@ -18,7 +18,7 @@ from agent.textual_tui import (
     AgentContentDelta,
     AgentEvent,
     AgentStepEvent,
-    OpenPlanterApp,
+    QuanticoApp,
     WikiChanged,
     WikiGraphCanvas,
     _extract_tool_arg_preview,
@@ -170,10 +170,10 @@ class TestWikiGraphCanvas:
 
 
 # ---------------------------------------------------------------------------
-# OpenPlanterApp — async pilot tests
+# QuanticoApp — async pilot tests
 # ---------------------------------------------------------------------------
 
-class TestOpenPlanterApp:
+class TestQuanticoApp:
     @pytest.fixture
     def mock_ctx(self):
         return _make_mock_ctx()
@@ -181,7 +181,7 @@ class TestOpenPlanterApp:
     @pytest.mark.asyncio
     async def test_app_launches(self, mock_ctx):
         """App should mount and show splash art."""
-        app = OpenPlanterApp(
+        app = QuanticoApp(
             mock_ctx,
             startup_info={"Provider": "openai", "Model": "gpt-4o"},
         )
@@ -195,7 +195,7 @@ class TestOpenPlanterApp:
     @pytest.mark.asyncio
     async def test_slash_help(self, mock_ctx):
         """Typing /help should display help text."""
-        app = OpenPlanterApp(mock_ctx)
+        app = QuanticoApp(mock_ctx)
         async with app.run_test() as pilot:
             inp = app.query_one("#prompt-input")
             inp.value = "/help"
@@ -205,7 +205,7 @@ class TestOpenPlanterApp:
     @pytest.mark.asyncio
     async def test_slash_status(self, mock_ctx):
         """Typing /status should not crash."""
-        app = OpenPlanterApp(mock_ctx)
+        app = QuanticoApp(mock_ctx)
         async with app.run_test() as pilot:
             inp = app.query_one("#prompt-input")
             inp.value = "/status"
@@ -215,7 +215,7 @@ class TestOpenPlanterApp:
     @pytest.mark.asyncio
     async def test_slash_quit(self, mock_ctx):
         """Typing /quit should exit the app."""
-        app = OpenPlanterApp(mock_ctx)
+        app = QuanticoApp(mock_ctx)
         async with app.run_test() as pilot:
             inp = app.query_one("#prompt-input")
             inp.value = "/quit"
@@ -225,7 +225,7 @@ class TestOpenPlanterApp:
     @pytest.mark.asyncio
     async def test_empty_input_ignored(self, mock_ctx):
         """Empty input should be ignored."""
-        app = OpenPlanterApp(mock_ctx)
+        app = QuanticoApp(mock_ctx)
         async with app.run_test() as pilot:
             await pilot.press("enter")
             await pilot.pause()
@@ -233,7 +233,7 @@ class TestOpenPlanterApp:
     @pytest.mark.asyncio
     async def test_agent_complete_renders(self, mock_ctx):
         """Posting AgentComplete should render the result."""
-        app = OpenPlanterApp(mock_ctx)
+        app = QuanticoApp(mock_ctx)
         async with app.run_test() as pilot:
             app._agent_running = True
             app.post_message(AgentComplete("Test result"))
@@ -243,7 +243,7 @@ class TestOpenPlanterApp:
     @pytest.mark.asyncio
     async def test_wiki_changed_triggers_rebuild(self, mock_ctx):
         """WikiChanged message should trigger graph rebuild."""
-        app = OpenPlanterApp(mock_ctx)
+        app = QuanticoApp(mock_ctx)
         async with app.run_test() as pilot:
             app.post_message(WikiChanged())
             await pilot.pause()

@@ -69,7 +69,7 @@ class TurnSummaryPersistenceTests(unittest.TestCase):
             workspace=root,
             max_depth=1,
             max_steps_per_call=5,
-            session_root_dir=".openplanter",
+            session_root_dir=".quantico",
             max_persisted_observations=50,
             max_turn_summaries=50,
         )
@@ -89,7 +89,7 @@ class TurnSummaryPersistenceTests(unittest.TestCase):
             )
             runtime.solve("test objective")
 
-            state_path = root / ".openplanter" / "sessions" / "sess-1" / "state.json"
+            state_path = root / ".quantico" / "sessions" / "sess-1" / "state.json"
             state = json.loads(state_path.read_text(encoding="utf-8"))
             self.assertIn("turn_history", state)
             self.assertEqual(len(state["turn_history"]), 1)
@@ -217,7 +217,7 @@ class TurnSummaryPersistenceTests(unittest.TestCase):
                 rt.solve(f"task-{i}")
 
             # After 5 turns with max=3, state should have only 3 entries
-            state_path = root / ".openplanter" / "sessions" / "sess-trunc" / "state.json"
+            state_path = root / ".quantico" / "sessions" / "sess-trunc" / "state.json"
             state = json.loads(state_path.read_text(encoding="utf-8"))
             history = state.get("turn_history", [])
             self.assertEqual(len(history), 3)
@@ -253,7 +253,7 @@ class TurnSummaryPersistenceTests(unittest.TestCase):
             cfg = self._make_config(root)
 
             # Create session manually with old-format state
-            session_dir = root / ".openplanter" / "sessions" / "sess-old"
+            session_dir = root / ".quantico" / "sessions" / "sess-old"
             session_dir.mkdir(parents=True)
             (session_dir / "artifacts").mkdir()
             (session_dir / "metadata.json").write_text(
