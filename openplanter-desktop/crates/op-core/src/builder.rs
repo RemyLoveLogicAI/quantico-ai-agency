@@ -144,7 +144,7 @@ pub fn resolve_endpoint(
                 .filter(|k| !k.is_empty())
                 .ok_or_else(|| {
                     ModelError::Message(
-                        "No Anthropic API key. Set ANTHROPIC_API_KEY or OPENPLANTER_ANTHROPIC_API_KEY.".into(),
+                        "No Anthropic API key. Set ANTHROPIC_API_KEY or QUANTICO_ANTHROPIC_API_KEY.".into(),
                     )
                 })?;
             // Anthropic base URL does NOT include /v1 suffix for /messages endpoint —
@@ -159,7 +159,7 @@ pub fn resolve_endpoint(
                 .filter(|k| !k.is_empty())
                 .ok_or_else(|| {
                     ModelError::Message(
-                        "No OpenAI API key. Set OPENAI_API_KEY or OPENPLANTER_OPENAI_API_KEY.".into(),
+                        "No OpenAI API key. Set OPENAI_API_KEY or QUANTICO_OPENAI_API_KEY.".into(),
                     )
                 })?;
             Ok((cfg.openai_base_url.clone(), key.to_string()))
@@ -172,7 +172,7 @@ pub fn resolve_endpoint(
                 .filter(|k| !k.is_empty())
                 .ok_or_else(|| {
                     ModelError::Message(
-                        "No OpenRouter API key. Set OPENROUTER_API_KEY or OPENPLANTER_OPENROUTER_API_KEY.".into(),
+                        "No OpenRouter API key. Set OPENROUTER_API_KEY or QUANTICO_OPENROUTER_API_KEY.".into(),
                     )
                 })?;
             Ok((cfg.openrouter_base_url.clone(), key.to_string()))
@@ -185,7 +185,7 @@ pub fn resolve_endpoint(
                 .filter(|k| !k.is_empty())
                 .ok_or_else(|| {
                     ModelError::Message(
-                        "No Cerebras API key. Set CEREBRAS_API_KEY or OPENPLANTER_CEREBRAS_API_KEY.".into(),
+                        "No Cerebras API key. Set CEREBRAS_API_KEY or QUANTICO_CEREBRAS_API_KEY.".into(),
                     )
                 })?;
             Ok((cfg.cerebras_base_url.clone(), key.to_string()))
@@ -218,9 +218,9 @@ pub fn build_model(cfg: &AgentConfig) -> Result<Box<dyn BaseModel>, ModelError> 
             if provider == "openrouter" {
                 extra_headers.insert(
                     "HTTP-Referer".to_string(),
-                    "https://github.com/openplanter".to_string(),
+                    "https://github.com/RemyLoveLogicAI/quantico-ai-agency".to_string(),
                 );
-                extra_headers.insert("X-Title".to_string(), "OpenPlanter".to_string());
+                extra_headers.insert("X-Title".to_string(), "Quantico".to_string());
             }
             Ok(Box::new(OpenAIModel::new(
                 model_name,

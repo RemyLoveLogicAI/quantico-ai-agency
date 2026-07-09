@@ -1,6 +1,6 @@
 /// System prompt sections — mirrors `agent/prompts.py` exactly.
 
-pub const SYSTEM_PROMPT_BASE: &str = r#"You are OpenPlanter, an analysis and investigation agent operating through a terminal session.
+pub const SYSTEM_PROMPT_BASE: &str = r#"You are Quantico, an analysis and investigation agent operating through a terminal session.
 
 You ingest heterogeneous datasets — corporate registries, campaign finance records,
 lobbying disclosures, property records, government contracts, and more — resolve
@@ -243,24 +243,24 @@ For full details of any prior turn, read the session logs:
 
 pub const WIKI_SECTION: &str = r#"
 == DATA SOURCES WIKI ==
-A runtime wiki of data source documentation is available at .openplanter/wiki/.
-Read .openplanter/wiki/index.md at the start of any investigation to see what
+A runtime wiki of data source documentation is available at .quantico/wiki/.
+Read .quantico/wiki/index.md at the start of any investigation to see what
 data sources are documented. Each entry describes access methods, schemas,
 coverage, and cross-reference potential.
 
 When you discover new information about a data source — updated URLs, new fields,
 cross-reference joins, data quality issues, or entirely new sources — update the
-relevant entry or create a new one using .openplanter/wiki/template.md.
+relevant entry or create a new one using .quantico/wiki/template.md.
 
 === MANDATORY WIKI INDEXING ===
 For EVERY investigation, you MUST maintain the wiki as a living knowledge map:
 
-1. READ .openplanter/wiki/index.md BEFORE starting any investigation to
+1. READ .quantico/wiki/index.md BEFORE starting any investigation to
    understand what sources are already documented.
 2. CREATE a wiki entry for EVERY data source you access or discover during the
-   investigation, using .openplanter/wiki/template.md as the template. No
+   investigation, using .quantico/wiki/template.md as the template. No
    source should go undocumented.
-3. UPDATE .openplanter/wiki/index.md to link each new entry in the appropriate
+3. UPDATE .quantico/wiki/index.md to link each new entry in the appropriate
    category table.
 4. In each entry's "Cross-Reference Potential" section, reference other sources
    using their EXACT names as they appear in the index.md table. This powers
@@ -413,7 +413,7 @@ mod tests {
     #[test]
     fn test_build_system_prompt_base_only() {
         let prompt = build_system_prompt(false, false, false);
-        assert!(prompt.contains("You are OpenPlanter"));
+        assert!(prompt.contains("You are Quantico"));
         assert!(prompt.contains("SESSION LOGS AND TRANSCRIPTS"));
         assert!(prompt.contains("TURN HISTORY"));
         assert!(prompt.contains("DATA SOURCES WIKI"));
@@ -425,7 +425,7 @@ mod tests {
     #[test]
     fn test_build_system_prompt_all_sections() {
         let prompt = build_system_prompt(true, true, true);
-        assert!(prompt.contains("You are OpenPlanter"));
+        assert!(prompt.contains("You are Quantico"));
         assert!(prompt.contains("REPL STRUCTURE"));
         assert!(prompt.contains("SUBTASK DELEGATION"));
         assert!(prompt.contains("ACCEPTANCE CRITERIA"));
@@ -444,7 +444,7 @@ mod tests {
     #[test]
     fn test_prompt_section_ordering() {
         let prompt = build_system_prompt(true, true, true);
-        let base_pos = prompt.find("You are OpenPlanter").unwrap();
+        let base_pos = prompt.find("You are Quantico").unwrap();
         let session_pos = prompt.find("SESSION LOGS AND TRANSCRIPTS").unwrap();
         let turn_pos = prompt.find("TURN HISTORY").unwrap();
         let wiki_pos = prompt.find("DATA SOURCES WIKI").unwrap();

@@ -39,7 +39,7 @@ fn env_bool(key: &str, default: bool) -> bool {
     }
 }
 
-/// Central configuration for the OpenPlanter agent.
+/// Central configuration for the Quantico agent.
 ///
 /// Mirrors the Python `AgentConfig` dataclass field-for-field.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,7 +118,7 @@ impl Default for AgentConfig {
             max_file_chars: 20000,
             max_search_hits: 200,
             max_shell_output_chars: 16000,
-            session_root_dir: ".openplanter".into(),
+            session_root_dir: ".quantico".into(),
             max_persisted_observations: 400,
             max_solve_seconds: 0,
             recursive: true,
@@ -136,29 +136,29 @@ impl AgentConfig {
     pub fn from_env(workspace: impl AsRef<Path>) -> Self {
         let ws = dunce_canonicalize(workspace.as_ref());
 
-        let openai_api_key = env_opt("OPENPLANTER_OPENAI_API_KEY")
+        let openai_api_key = env_opt("QUANTICO_OPENAI_API_KEY")
             .or_else(|| env_opt("OPENAI_API_KEY"));
 
-        let anthropic_api_key = env_opt("OPENPLANTER_ANTHROPIC_API_KEY")
+        let anthropic_api_key = env_opt("QUANTICO_ANTHROPIC_API_KEY")
             .or_else(|| env_opt("ANTHROPIC_API_KEY"));
 
-        let openrouter_api_key = env_opt("OPENPLANTER_OPENROUTER_API_KEY")
+        let openrouter_api_key = env_opt("QUANTICO_OPENROUTER_API_KEY")
             .or_else(|| env_opt("OPENROUTER_API_KEY"));
 
-        let cerebras_api_key = env_opt("OPENPLANTER_CEREBRAS_API_KEY")
+        let cerebras_api_key = env_opt("QUANTICO_CEREBRAS_API_KEY")
             .or_else(|| env_opt("CEREBRAS_API_KEY"));
 
-        let exa_api_key = env_opt("OPENPLANTER_EXA_API_KEY")
+        let exa_api_key = env_opt("QUANTICO_EXA_API_KEY")
             .or_else(|| env_opt("EXA_API_KEY"));
 
-        let voyage_api_key = env_opt("OPENPLANTER_VOYAGE_API_KEY")
+        let voyage_api_key = env_opt("QUANTICO_VOYAGE_API_KEY")
             .or_else(|| env_opt("VOYAGE_API_KEY"));
 
-        let openai_base_url = env_opt("OPENPLANTER_OPENAI_BASE_URL")
-            .or_else(|| env_opt("OPENPLANTER_BASE_URL"))
+        let openai_base_url = env_opt("QUANTICO_OPENAI_BASE_URL")
+            .or_else(|| env_opt("QUANTICO_BASE_URL"))
             .unwrap_or_else(|| "https://api.openai.com/v1".into());
 
-        let reasoning_effort_raw = env_or("OPENPLANTER_REASONING_EFFORT", "high")
+        let reasoning_effort_raw = env_or("QUANTICO_REASONING_EFFORT", "high")
             .trim()
             .to_lowercase();
         let reasoning_effort = if reasoning_effort_raw.is_empty() {
@@ -167,7 +167,7 @@ impl AgentConfig {
             Some(reasoning_effort_raw)
         };
 
-        let provider_raw = env_or("OPENPLANTER_PROVIDER", "auto")
+        let provider_raw = env_or("QUANTICO_PROVIDER", "auto")
             .trim()
             .to_lowercase();
         let provider = if provider_raw.is_empty() {
@@ -179,52 +179,52 @@ impl AgentConfig {
         Self {
             workspace: ws,
             provider,
-            model: env_or("OPENPLANTER_MODEL", "claude-opus-4-6"),
+            model: env_or("QUANTICO_MODEL", "claude-opus-4-6"),
             reasoning_effort,
             base_url: openai_base_url.clone(),
             api_key: openai_api_key.clone(),
             openai_base_url,
             anthropic_base_url: env_or(
-                "OPENPLANTER_ANTHROPIC_BASE_URL",
+                "QUANTICO_ANTHROPIC_BASE_URL",
                 "https://api.anthropic.com/v1",
             ),
             openrouter_base_url: env_or(
-                "OPENPLANTER_OPENROUTER_BASE_URL",
+                "QUANTICO_OPENROUTER_BASE_URL",
                 "https://openrouter.ai/api/v1",
             ),
             cerebras_base_url: env_or(
-                "OPENPLANTER_CEREBRAS_BASE_URL",
+                "QUANTICO_CEREBRAS_BASE_URL",
                 "https://api.cerebras.ai/v1",
             ),
             ollama_base_url: env_or(
-                "OPENPLANTER_OLLAMA_BASE_URL",
+                "QUANTICO_OLLAMA_BASE_URL",
                 "http://localhost:11434/v1",
             ),
-            exa_base_url: env_or("OPENPLANTER_EXA_BASE_URL", "https://api.exa.ai"),
+            exa_base_url: env_or("QUANTICO_EXA_BASE_URL", "https://api.exa.ai"),
             openai_api_key,
             anthropic_api_key,
             openrouter_api_key,
             cerebras_api_key,
             exa_api_key,
             voyage_api_key,
-            max_depth: env_int("OPENPLANTER_MAX_DEPTH", 4),
-            max_steps_per_call: env_int("OPENPLANTER_MAX_STEPS", 100),
-            max_observation_chars: env_int("OPENPLANTER_MAX_OBS_CHARS", 6000),
-            command_timeout_sec: env_int("OPENPLANTER_CMD_TIMEOUT", 45),
-            shell: env_or("OPENPLANTER_SHELL", "/bin/sh"),
-            max_files_listed: env_int("OPENPLANTER_MAX_FILES", 400),
-            max_file_chars: env_int("OPENPLANTER_MAX_FILE_CHARS", 20000),
-            max_search_hits: env_int("OPENPLANTER_MAX_SEARCH_HITS", 200),
-            max_shell_output_chars: env_int("OPENPLANTER_MAX_SHELL_CHARS", 16000),
-            session_root_dir: env_or("OPENPLANTER_SESSION_DIR", ".openplanter"),
-            max_persisted_observations: env_int("OPENPLANTER_MAX_PERSISTED_OBS", 400),
-            max_solve_seconds: env_int("OPENPLANTER_MAX_SOLVE_SECONDS", 0),
-            recursive: env_bool("OPENPLANTER_RECURSIVE", true),
-            min_subtask_depth: env_int("OPENPLANTER_MIN_SUBTASK_DEPTH", 0),
-            acceptance_criteria: env_bool("OPENPLANTER_ACCEPTANCE_CRITERIA", true),
-            max_plan_chars: env_int("OPENPLANTER_MAX_PLAN_CHARS", 40_000),
-            max_turn_summaries: env_int("OPENPLANTER_MAX_TURN_SUMMARIES", 50),
-            demo: env_bool("OPENPLANTER_DEMO", false),
+            max_depth: env_int("QUANTICO_MAX_DEPTH", 4),
+            max_steps_per_call: env_int("QUANTICO_MAX_STEPS", 100),
+            max_observation_chars: env_int("QUANTICO_MAX_OBS_CHARS", 6000),
+            command_timeout_sec: env_int("QUANTICO_CMD_TIMEOUT", 45),
+            shell: env_or("QUANTICO_SHELL", "/bin/sh"),
+            max_files_listed: env_int("QUANTICO_MAX_FILES", 400),
+            max_file_chars: env_int("QUANTICO_MAX_FILE_CHARS", 20000),
+            max_search_hits: env_int("QUANTICO_MAX_SEARCH_HITS", 200),
+            max_shell_output_chars: env_int("QUANTICO_MAX_SHELL_CHARS", 16000),
+            session_root_dir: env_or("QUANTICO_SESSION_DIR", ".quantico"),
+            max_persisted_observations: env_int("QUANTICO_MAX_PERSISTED_OBS", 400),
+            max_solve_seconds: env_int("QUANTICO_MAX_SOLVE_SECONDS", 0),
+            recursive: env_bool("QUANTICO_RECURSIVE", true),
+            min_subtask_depth: env_int("QUANTICO_MIN_SUBTASK_DEPTH", 0),
+            acceptance_criteria: env_bool("QUANTICO_ACCEPTANCE_CRITERIA", true),
+            max_plan_chars: env_int("QUANTICO_MAX_PLAN_CHARS", 40_000),
+            max_turn_summaries: env_int("QUANTICO_MAX_TURN_SUMMARIES", 50),
+            demo: env_bool("QUANTICO_DEMO", false),
         }
     }
 }
@@ -291,16 +291,16 @@ mod tests {
     #[test]
     fn test_from_env_defaults_and_custom() {
         let keys = [
-            "OPENPLANTER_PROVIDER",
-            "OPENPLANTER_MODEL",
-            "OPENPLANTER_REASONING_EFFORT",
-            "OPENPLANTER_OPENAI_API_KEY",
+            "QUANTICO_PROVIDER",
+            "QUANTICO_MODEL",
+            "QUANTICO_REASONING_EFFORT",
+            "QUANTICO_OPENAI_API_KEY",
             "OPENAI_API_KEY",
-            "OPENPLANTER_ANTHROPIC_API_KEY",
+            "QUANTICO_ANTHROPIC_API_KEY",
             "ANTHROPIC_API_KEY",
-            "OPENPLANTER_MAX_DEPTH",
-            "OPENPLANTER_RECURSIVE",
-            "OPENPLANTER_DEMO",
+            "QUANTICO_MAX_DEPTH",
+            "QUANTICO_RECURSIVE",
+            "QUANTICO_DEMO",
         ];
         // Save original values
         let saved: Vec<_> = keys
@@ -328,12 +328,12 @@ mod tests {
 
         unsafe {
             // --- Phase 2: test custom values ---
-            env::set_var("OPENPLANTER_PROVIDER", "openai");
-            env::set_var("OPENPLANTER_MODEL", "gpt-5.2");
-            env::set_var("OPENPLANTER_REASONING_EFFORT", "low");
-            env::set_var("OPENPLANTER_MAX_DEPTH", "8");
-            env::set_var("OPENPLANTER_RECURSIVE", "false");
-            env::set_var("OPENPLANTER_DEMO", "true");
+            env::set_var("QUANTICO_PROVIDER", "openai");
+            env::set_var("QUANTICO_MODEL", "gpt-5.2");
+            env::set_var("QUANTICO_REASONING_EFFORT", "low");
+            env::set_var("QUANTICO_MAX_DEPTH", "8");
+            env::set_var("QUANTICO_RECURSIVE", "false");
+            env::set_var("QUANTICO_DEMO", "true");
             env::set_var("OPENAI_API_KEY", "sk-test123");
         }
 

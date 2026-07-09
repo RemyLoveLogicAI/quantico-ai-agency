@@ -135,7 +135,7 @@ impl PersistentSettings {
     }
 }
 
-/// Persistent settings store at `{workspace}/.openplanter/settings.json`.
+/// Persistent settings store at `{workspace}/.quantico/settings.json`.
 pub struct SettingsStore {
     pub settings_path: PathBuf,
 }
@@ -232,7 +232,7 @@ mod tests {
     #[test]
     fn test_settings_store_save_load() {
         let dir = tempfile::tempdir().unwrap();
-        let store = SettingsStore::new(dir.path(), ".openplanter");
+        let store = SettingsStore::new(dir.path(), ".quantico");
         let settings = PersistentSettings {
             default_model: Some("gpt-5.2".into()),
             default_reasoning_effort: Some("high".into()),
@@ -247,7 +247,7 @@ mod tests {
     #[test]
     fn test_settings_store_load_missing() {
         let dir = tempfile::tempdir().unwrap();
-        let store = SettingsStore::new(dir.path(), ".openplanter");
+        let store = SettingsStore::new(dir.path(), ".quantico");
         let loaded = store.load();
         assert_eq!(loaded, PersistentSettings::default());
     }

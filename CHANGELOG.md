@@ -3,8 +3,10 @@
 ## 0.1.2 (2026-07-09)
 
 - Rebranded the Python agent codebase from `OpenPlanter` to `Quantico`.
+- Rebranded the Rust desktop core and Tauri app from `OpenPlanter` to `Quantico`.
 - Removed the deprecated `openplanter-agent` console script alias.
-- Updated session/config directories, user agent strings, prompts, and TUI art.
+- Updated session/config directories, user agent strings, prompts, TUI art, and wiki paths.
+- Bumped desktop bundle version to `0.1.2`.
 
 ## 0.1.1 (2026-07-09)
 

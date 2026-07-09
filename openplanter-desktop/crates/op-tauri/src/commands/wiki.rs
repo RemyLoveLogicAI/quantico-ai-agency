@@ -13,12 +13,12 @@ static CATEGORY_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^#{2,3}\s+(.+)").unwrap());
 
 /// Walk up from `start` to find a directory containing `wiki/index.md`.
-/// Checks both `.openplanter/wiki/` (preferred) and `wiki/` at each level.
+/// Checks both `.quantico/wiki/` (preferred) and `wiki/` at each level.
 fn find_wiki_dir(start: &Path) -> Option<PathBuf> {
     let mut dir = start.canonicalize().ok();
     while let Some(d) = dir {
-        // Prefer .openplanter/wiki/ (standard location used by the agent)
-        let dot_wiki = d.join(".openplanter").join("wiki");
+        // Prefer .quantico/wiki/ (standard location used by the agent)
+        let dot_wiki = d.join(".quantico").join("wiki");
         if dot_wiki.join("index.md").exists() {
             return Some(dot_wiki);
         }
@@ -934,9 +934,9 @@ mod tests {
     }
 
     #[test]
-    fn test_find_wiki_dir_dot_openplanter() {
+    fn test_find_wiki_dir_dot_quantico() {
         let tmp = tempdir().unwrap();
-        let wiki = tmp.path().join(".openplanter").join("wiki");
+        let wiki = tmp.path().join(".quantico").join("wiki");
         fs::create_dir_all(&wiki).unwrap();
         fs::write(wiki.join("index.md"), "# Index").unwrap();
 
@@ -945,14 +945,14 @@ mod tests {
     }
 
     #[test]
-    fn test_find_wiki_dir_dot_openplanter_preferred_over_bare() {
+    fn test_find_wiki_dir_dot_quantico_preferred_over_bare() {
         let tmp = tempdir().unwrap();
-        // Create both wiki/ and .openplanter/wiki/
+        // Create both wiki/ and .quantico/wiki/
         let bare = tmp.path().join("wiki");
         fs::create_dir_all(&bare).unwrap();
         fs::write(bare.join("index.md"), "# Bare").unwrap();
 
-        let dot = tmp.path().join(".openplanter").join("wiki");
+        let dot = tmp.path().join(".quantico").join("wiki");
         fs::create_dir_all(&dot).unwrap();
         fs::write(dot.join("index.md"), "# Dot").unwrap();
 
@@ -961,13 +961,13 @@ mod tests {
     }
 
     #[test]
-    fn test_find_wiki_dir_dot_openplanter_from_child() {
+    fn test_find_wiki_dir_dot_quantico_from_child() {
         let tmp = tempdir().unwrap();
-        let wiki = tmp.path().join(".openplanter").join("wiki");
+        let wiki = tmp.path().join(".quantico").join("wiki");
         fs::create_dir_all(&wiki).unwrap();
         fs::write(wiki.join("index.md"), "# Index").unwrap();
 
-        // Start from a subdirectory — should still walk up and find .openplanter/wiki/
+        // Start from a subdirectory — should still walk up and find .quantico/wiki/
         let child = tmp.path().join("subdir");
         fs::create_dir_all(&child).unwrap();
         let found = find_wiki_dir(&child).unwrap();
@@ -975,9 +975,9 @@ mod tests {
     }
 
     #[test]
-    fn test_dot_openplanter_wiki_end_to_end() {
+    fn test_dot_quantico_wiki_end_to_end() {
         let tmp = tempdir().unwrap();
-        let wiki = tmp.path().join(".openplanter").join("wiki");
+        let wiki = tmp.path().join(".quantico").join("wiki");
         fs::create_dir_all(&wiki).unwrap();
 
         let index_content = "### Campaign Finance\n| FEC | US | [link](fec.md) |";
@@ -993,10 +993,10 @@ mod tests {
         assert_eq!(nodes.len(), 1);
         assert_eq!(nodes[0].path, "wiki/fec.md");
 
-        // project_root should be .openplanter/ so joining with wiki/fec.md works
+        // project_root should be .quantico/ so joining with wiki/fec.md works
         let project_root = found.parent().unwrap();
         let file_path = project_root.join(&nodes[0].path);
-        assert!(file_path.exists(), "should resolve to .openplanter/wiki/fec.md");
+        assert!(file_path.exists(), "should resolve to .quantico/wiki/fec.md");
     }
 
     #[test]
