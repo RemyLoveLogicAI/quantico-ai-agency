@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1 (2026-07-09)
+
+- Rebranded the desktop bundle from `OpenPlanter` to `Quantico`.
+- Updated Tauri `productName`, `identifier`, window title, and bundle version to `0.1.1`.
+
 ## 0.1.0 (2026-07-09)
 
 First tagged release of Quantico AI Agency.
