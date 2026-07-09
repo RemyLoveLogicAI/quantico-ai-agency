@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "openplanter-agent"
+name = "quantico-agent"
 version = "0.1.0"
-description = "A recursive-language-model coding agent with a terminal UI."
+description = "Quantico AI Agency — a recursive LLM investigation agent for financial forensics."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -18,9 +18,15 @@ dependencies = [
 textual = [
     "textual>=0.89",
     "networkx>=3.2",
+    "numpy>=1.24",
+]
+test = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.23",
 ]
 
 [project.scripts]
+quantico-agent = "agent.__main__:main"
 openplanter-agent = "agent.__main__:main"
 
 [tool.setuptools.packages.find]
