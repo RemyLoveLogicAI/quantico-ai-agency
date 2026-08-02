@@ -2,7 +2,7 @@
 
 This file catalogues all third-party dependencies found across the project’s package manifests.
 
-> License data fetched from public registries (npm, PyPI, crates.io, etc.). 16/45 packages resolved.
+> License data fetched from public registries (npm, PyPI, crates.io, etc.). 18/44 packages resolved.
 
 ---
 
@@ -103,7 +103,7 @@ This file catalogues all third-party dependencies found across the project’s p
 
 ## pyproject — `pyproject.toml`
 
-**8 packages**
+**5 packages**
 
 *Direct:*
 
