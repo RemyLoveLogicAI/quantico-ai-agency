@@ -135,24 +135,24 @@ pub fn parse_env_file(path: &Path) -> CredentialBundle {
     }
 
     CredentialBundle {
-        openai_api_key: get_key(&env_map, "OPENAI_API_KEY", "OPENPLANTER_OPENAI_API_KEY"),
+        openai_api_key: get_key(&env_map, "OPENAI_API_KEY", "QUANTICO_OPENAI_API_KEY"),
         anthropic_api_key: get_key(
             &env_map,
             "ANTHROPIC_API_KEY",
-            "OPENPLANTER_ANTHROPIC_API_KEY",
+            "QUANTICO_ANTHROPIC_API_KEY",
         ),
         openrouter_api_key: get_key(
             &env_map,
             "OPENROUTER_API_KEY",
-            "OPENPLANTER_OPENROUTER_API_KEY",
+            "QUANTICO_OPENROUTER_API_KEY",
         ),
         cerebras_api_key: get_key(
             &env_map,
             "CEREBRAS_API_KEY",
-            "OPENPLANTER_CEREBRAS_API_KEY",
+            "QUANTICO_CEREBRAS_API_KEY",
         ),
-        exa_api_key: get_key(&env_map, "EXA_API_KEY", "OPENPLANTER_EXA_API_KEY"),
-        voyage_api_key: get_key(&env_map, "VOYAGE_API_KEY", "OPENPLANTER_VOYAGE_API_KEY"),
+        exa_api_key: get_key(&env_map, "EXA_API_KEY", "QUANTICO_EXA_API_KEY"),
+        voyage_api_key: get_key(&env_map, "VOYAGE_API_KEY", "QUANTICO_VOYAGE_API_KEY"),
     }
 }
 
@@ -167,12 +167,12 @@ pub fn credentials_from_env() -> CredentialBundle {
     }
 
     CredentialBundle {
-        openai_api_key: env_key("OPENPLANTER_OPENAI_API_KEY", "OPENAI_API_KEY"),
-        anthropic_api_key: env_key("OPENPLANTER_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY"),
-        openrouter_api_key: env_key("OPENPLANTER_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"),
-        cerebras_api_key: env_key("OPENPLANTER_CEREBRAS_API_KEY", "CEREBRAS_API_KEY"),
-        exa_api_key: env_key("OPENPLANTER_EXA_API_KEY", "EXA_API_KEY"),
-        voyage_api_key: env_key("OPENPLANTER_VOYAGE_API_KEY", "VOYAGE_API_KEY"),
+        openai_api_key: env_key("QUANTICO_OPENAI_API_KEY", "OPENAI_API_KEY"),
+        anthropic_api_key: env_key("QUANTICO_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY"),
+        openrouter_api_key: env_key("QUANTICO_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"),
+        cerebras_api_key: env_key("QUANTICO_CEREBRAS_API_KEY", "CEREBRAS_API_KEY"),
+        exa_api_key: env_key("QUANTICO_EXA_API_KEY", "EXA_API_KEY"),
+        voyage_api_key: env_key("QUANTICO_VOYAGE_API_KEY", "VOYAGE_API_KEY"),
     }
 }
 
@@ -194,7 +194,7 @@ pub fn discover_env_candidates(workspace: &Path) -> Vec<PathBuf> {
     candidates
 }
 
-/// Workspace-level credential store at `{workspace}/.openplanter/credentials.json`.
+/// Workspace-level credential store at `{workspace}/.quantico/credentials.json`.
 pub struct CredentialStore {
     pub credentials_path: PathBuf,
 }
@@ -241,7 +241,7 @@ impl CredentialStore {
     }
 }
 
-/// User-level credential store at `~/.openplanter/credentials.json`.
+/// User-level credential store at `~/.quantico/credentials.json`.
 pub struct UserCredentialStore {
     pub credentials_path: PathBuf,
 }
@@ -253,7 +253,7 @@ impl UserCredentialStore {
             .unwrap_or_else(|_| ".".to_string());
         Self {
             credentials_path: PathBuf::from(home)
-                .join(".openplanter")
+                .join(".quantico")
                 .join("credentials.json"),
         }
     }
@@ -366,7 +366,7 @@ UNRELATED_VAR=foo
     #[test]
     fn test_credential_store_save_load() {
         let dir = tempfile::tempdir().unwrap();
-        let store = CredentialStore::new(dir.path(), ".openplanter");
+        let store = CredentialStore::new(dir.path(), ".quantico");
         let bundle = CredentialBundle {
             openai_api_key: Some("sk-test".into()),
             anthropic_api_key: Some("ant-test".into()),
@@ -381,7 +381,7 @@ UNRELATED_VAR=foo
     #[test]
     fn test_credential_store_load_missing() {
         let dir = tempfile::tempdir().unwrap();
-        let store = CredentialStore::new(dir.path(), ".openplanter");
+        let store = CredentialStore::new(dir.path(), ".quantico");
         let loaded = store.load();
         assert!(!loaded.has_any());
     }

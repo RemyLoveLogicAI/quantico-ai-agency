@@ -2,7 +2,7 @@
 ///
 /// Runs as a non-blocking background task after each main agent step.
 /// Reads the latest step context, decides if wiki updates are needed,
-/// and writes to `.openplanter/wiki/` using a restricted tool set.
+/// and writes to `.quantico/wiki/` using a restricted tool set.
 
 use tokio_util::sync::CancellationToken;
 
@@ -21,18 +21,18 @@ pub struct CuratorResult {
 
 const CURATOR_SYSTEM_PROMPT: &str = r#"You are the Wiki Curator, a background agent that maintains the investigation wiki.
 
-Your ONLY job is to update the wiki at .openplanter/wiki/ based on the main agent's latest step.
+Your ONLY job is to update the wiki at .quantico/wiki/ based on the main agent's latest step.
 
 == RULES ==
-1. You may ONLY modify files under .openplanter/wiki/
-2. Read .openplanter/wiki/index.md first to understand existing entries
+1. You may ONLY modify files under .quantico/wiki/
+2. Read .quantico/wiki/index.md first to understand existing entries
 3. If the main agent discovered a new data source, create a wiki entry using the template format
 4. If the main agent found new information about an existing source, update the relevant entry
-5. Update .openplanter/wiki/index.md to link any new entries in the correct category table
+5. Update .quantico/wiki/index.md to link any new entries in the correct category table
 6. Use EXACT source names in Cross-Reference sections to power the knowledge graph
 7. If nothing in the step context is wiki-relevant, respond with ONLY: "No wiki updates needed"
 8. Keep entries factual and concise — document what was found, not speculation
-9. Never modify files outside .openplanter/wiki/
+9. Never modify files outside .quantico/wiki/
 10. Maximum 8 tool calls — be efficient
 
 == WIKI ENTRY TEMPLATE ==

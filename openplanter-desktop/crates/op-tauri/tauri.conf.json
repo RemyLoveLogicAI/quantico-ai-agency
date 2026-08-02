@@ -1,7 +1,7 @@
 {
-  "productName": "OpenPlanter",
-  "version": "0.1.0",
-  "identifier": "com.openplanter.desktop",
+  "productName": "Quantico",
+  "version": "0.1.2",
+  "identifier": "com.lovelogic.quantico",
   "build": {
     "frontendDist": "../../frontend/dist",
     "devUrl": "http://localhost:5173",
@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "OpenPlanter",
+        "title": "Quantico AI Agency",
         "width": 1400,
         "height": 900,
         "resizable": true,

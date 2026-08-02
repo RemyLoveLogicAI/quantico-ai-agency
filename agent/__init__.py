@@ -1,4 +1,4 @@
-"""OpenPlanter agent package."""
+"""Quantico agent package."""
 
 from .config import AgentConfig
 from .credentials import CredentialBundle, CredentialStore

@@ -1,4 +1,4 @@
-/// Provider-neutral tool definitions for the OpenPlanter agent.
+/// Provider-neutral tool definitions for the Quantico agent.
 ///
 /// Single source of truth for tool schemas. Converter helpers produce the
 /// provider-specific shapes expected by OpenAI and Anthropic APIs.

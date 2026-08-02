@@ -213,6 +213,10 @@ class TestCensusAcsFetch(unittest.TestCase):
         except Exception as e:
             self.fail(f"Live API test failed: {e}")
 
+    @unittest.skipIf(
+        os.getenv("SKIP_LIVE_TESTS") == "1",
+        "Skipping live integration test"
+    )
     def test_fetch_census_data_handles_http_error(self):
         """Test error handling for HTTP errors."""
         # Build URL with intentionally invalid parameters

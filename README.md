@@ -1,12 +1,14 @@
-# OpenPlanter
+# Quantico AI Agency
 
-A recursive-language-model investigation agent with a desktop GUI and terminal interface. OpenPlanter ingests heterogeneous datasets — corporate registries, campaign finance records, lobbying disclosures, government contracts, and more — resolves entities across them, and surfaces non-obvious connections through evidence-backed analysis. It operates autonomously with file I/O, shell execution, web search, and recursive sub-agent delegation.
+A recursive-language-model investigation agent for financial forensics, with a desktop GUI and terminal interface. Quantico ingests heterogeneous datasets — corporate registries, campaign finance records, lobbying disclosures, government contracts, and more — resolves entities across them, and surfaces non-obvious connections through evidence-backed analysis. It operates autonomously with file I/O, shell execution, web search, and recursive sub-agent delegation.
 
-![OpenPlanter Desktop](screenshot.png)
+_Forked from [OpenPlanter](https://github.com/ShinMegamiBoson/OpenPlanter)._
+
+![Quantico AI Agency Desktop](screenshot.png)
 
 ## Download
 
-Pre-built binaries are available on the [Releases page](https://github.com/ShinMegamiBoson/OpenPlanter/releases/latest):
+Pre-built binaries are available on the [Releases page](https://github.com/RemyLoveLogicAI/quantico-ai-agency/releases/latest):
 
 - **macOS** — `.dmg`
 - **Windows** — `.msi`
@@ -14,7 +16,7 @@ Pre-built binaries are available on the [Releases page](https://github.com/ShinM
 
 ## Desktop App
 
-The desktop app (`openplanter-desktop/`) is a Tauri 2 application with a three-pane layout:
+The desktop app (`openplanter-desktop/`) is a Tauri 2 application with a three-pane layout. The CLI is `quantico-agent`:
 
 - **Sidebar** — Session management, provider/model settings, and API credential status
 - **Chat pane** — Conversational interface showing the agent's objectives, reasoning steps, tool calls, and findings with syntax-highlighted code blocks
@@ -56,16 +58,16 @@ The Python CLI agent can be used independently of the desktop app.
 pip install -e .
 
 # Configure API keys (interactive prompt)
-openplanter-agent --configure-keys
+quantico-agent --configure-keys
 
 # Launch the TUI
-openplanter-agent --workspace /path/to/your/project
+quantico-agent --workspace /path/to/your/project
 ```
 
 Or run a single task headlessly:
 
 ```bash
-openplanter-agent --task "Cross-reference vendor payments against lobbying disclosures and flag overlaps" --workspace ./data
+quantico-agent --task "Cross-reference vendor payments against lobbying disclosures and flag overlaps" --workspace ./data
 ```
 
 ### Docker
@@ -92,9 +94,9 @@ The container mounts `./workspace` as the agent's working directory.
 [Ollama](https://ollama.com) runs models locally with no API key. Install Ollama, pull a model (`ollama pull llama3.2`), then:
 
 ```bash
-openplanter-agent --provider ollama
-openplanter-agent --provider ollama --model mistral
-openplanter-agent --provider ollama --list-models
+quantico-agent --provider ollama
+quantico-agent --provider ollama --model mistral
+quantico-agent --provider ollama --list-models
 ```
 
 The base URL defaults to `http://localhost:11434/v1` and can be overridden with `OPENPLANTER_OLLAMA_BASE_URL` or `--base-url`. The first request may be slow while Ollama loads the model into memory; a 120-second first-byte timeout is used automatically.
@@ -120,7 +122,7 @@ In **recursive mode** (the default), the agent spawns sub-agents via `subtask` a
 ## CLI Reference
 
 ```
-openplanter-agent [options]
+quantico-agent [options]
 ```
 
 ### Workspace & Session
@@ -232,17 +234,14 @@ cargo test
 ### CLI Agent
 
 ```bash
-# Install in editable mode
-pip install -e .
+# Install in editable mode with all optional dependencies
+pip install -e '.[textual,test]'
 
-# Run tests
-python -m pytest tests/
-
-# Skip live API tests
-python -m pytest tests/ --ignore=tests/test_live_models.py --ignore=tests/test_integration_live.py
+# Run tests (skips live API tests that require network / API keys)
+SKIP_LIVE_TESTS=1 python -m pytest tests/ --ignore=tests/test_live_models.py --ignore=tests/test_integration_live.py
 ```
 
-Requires Python 3.10+. Dependencies: `rich`, `prompt_toolkit`, `pyfiglet`.
+Requires Python 3.10+. Core dependencies: `rich`, `prompt_toolkit`, `pyfiglet`.
 
 ## License
 

@@ -30,7 +30,7 @@ def check_network() -> bool:
         return False
 
 
-NETWORK_AVAILABLE = check_network()
+NETWORK_AVAILABLE = os.getenv("SKIP_LIVE_TESTS") != "1" and check_network()
 
 
 class TestFecFetch(unittest.TestCase):

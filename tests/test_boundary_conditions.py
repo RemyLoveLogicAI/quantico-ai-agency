@@ -30,7 +30,7 @@ def _make_config(root: Path, **overrides) -> AgentConfig:
         workspace=root,
         max_depth=3,
         max_steps_per_call=12,
-        session_root_dir=".openplanter",
+        session_root_dir=".quantico",
         max_persisted_observations=400,
         acceptance_criteria=False,
     )
@@ -198,7 +198,7 @@ class CorruptedEventsTests(unittest.TestCase):
     def test_corrupted_state_returns_default(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            store = SessionStore(workspace=root, session_root_dir=".openplanter")
+            store = SessionStore(workspace=root, session_root_dir=".quantico")
             sid, _, _ = store.open_session()
 
             # Write corrupted state.json
@@ -300,7 +300,7 @@ class EventLogStructureTests(unittest.TestCase):
             runtime.solve("test events")
 
             # Find events.jsonl and verify each line is valid JSON
-            sessions_dir = root / ".openplanter" / "sessions"
+            sessions_dir = root / ".quantico" / "sessions"
             for session_dir in sessions_dir.iterdir():
                 events_file = session_dir / "events.jsonl"
                 if events_file.exists():

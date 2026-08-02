@@ -96,7 +96,7 @@ class PersistentSettings:
 @dataclass(slots=True)
 class SettingsStore:
     workspace: Path
-    session_root_dir: str = ".openplanter"
+    session_root_dir: str = ".quantico"
     settings_path: Path = field(init=False)
 
     def __post_init__(self) -> None:

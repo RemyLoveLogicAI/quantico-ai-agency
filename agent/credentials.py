@@ -102,40 +102,40 @@ def parse_env_file(path: Path) -> CredentialBundle:
         env[key] = value
 
     return CredentialBundle(
-        openai_api_key=(env.get("OPENAI_API_KEY") or env.get("OPENPLANTER_OPENAI_API_KEY") or "").strip() or None,
-        anthropic_api_key=(env.get("ANTHROPIC_API_KEY") or env.get("OPENPLANTER_ANTHROPIC_API_KEY") or "").strip()
+        openai_api_key=(env.get("OPENAI_API_KEY") or env.get("QUANTICO_OPENAI_API_KEY") or "").strip() or None,
+        anthropic_api_key=(env.get("ANTHROPIC_API_KEY") or env.get("QUANTICO_ANTHROPIC_API_KEY") or "").strip()
         or None,
-        openrouter_api_key=(env.get("OPENROUTER_API_KEY") or env.get("OPENPLANTER_OPENROUTER_API_KEY") or "").strip()
+        openrouter_api_key=(env.get("OPENROUTER_API_KEY") or env.get("QUANTICO_OPENROUTER_API_KEY") or "").strip()
         or None,
-        cerebras_api_key=(env.get("CEREBRAS_API_KEY") or env.get("OPENPLANTER_CEREBRAS_API_KEY") or "").strip()
+        cerebras_api_key=(env.get("CEREBRAS_API_KEY") or env.get("QUANTICO_CEREBRAS_API_KEY") or "").strip()
         or None,
-        exa_api_key=(env.get("EXA_API_KEY") or env.get("OPENPLANTER_EXA_API_KEY") or "").strip() or None,
-        voyage_api_key=(env.get("VOYAGE_API_KEY") or env.get("OPENPLANTER_VOYAGE_API_KEY") or "").strip() or None,
+        exa_api_key=(env.get("EXA_API_KEY") or env.get("QUANTICO_EXA_API_KEY") or "").strip() or None,
+        voyage_api_key=(env.get("VOYAGE_API_KEY") or env.get("QUANTICO_VOYAGE_API_KEY") or "").strip() or None,
     )
 
 
 def credentials_from_env() -> CredentialBundle:
     return CredentialBundle(
         openai_api_key=(
-            os.getenv("OPENPLANTER_OPENAI_API_KEY")
+            os.getenv("QUANTICO_OPENAI_API_KEY")
             or os.getenv("OPENAI_API_KEY")
             or ""
         ).strip()
         or None,
         anthropic_api_key=(
-            os.getenv("OPENPLANTER_ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_API_KEY") or ""
+            os.getenv("QUANTICO_ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_API_KEY") or ""
         ).strip()
         or None,
         openrouter_api_key=(
-            os.getenv("OPENPLANTER_OPENROUTER_API_KEY") or os.getenv("OPENROUTER_API_KEY") or ""
+            os.getenv("QUANTICO_OPENROUTER_API_KEY") or os.getenv("OPENROUTER_API_KEY") or ""
         ).strip()
         or None,
         cerebras_api_key=(
-            os.getenv("OPENPLANTER_CEREBRAS_API_KEY") or os.getenv("CEREBRAS_API_KEY") or ""
+            os.getenv("QUANTICO_CEREBRAS_API_KEY") or os.getenv("CEREBRAS_API_KEY") or ""
         ).strip()
         or None,
-        exa_api_key=(os.getenv("OPENPLANTER_EXA_API_KEY") or os.getenv("EXA_API_KEY") or "").strip() or None,
-        voyage_api_key=(os.getenv("OPENPLANTER_VOYAGE_API_KEY") or os.getenv("VOYAGE_API_KEY") or "").strip() or None,
+        exa_api_key=(os.getenv("QUANTICO_EXA_API_KEY") or os.getenv("EXA_API_KEY") or "").strip() or None,
+        voyage_api_key=(os.getenv("QUANTICO_VOYAGE_API_KEY") or os.getenv("VOYAGE_API_KEY") or "").strip() or None,
     )
 
 
@@ -158,7 +158,7 @@ def discover_env_candidates(workspace: Path) -> list[Path]:
 @dataclass(slots=True)
 class CredentialStore:
     workspace: Path
-    session_root_dir: str = ".openplanter"
+    session_root_dir: str = ".quantico"
     credentials_path: Path = field(init=False)
 
     def __post_init__(self) -> None:
@@ -186,12 +186,12 @@ class CredentialStore:
             pass
 
 
-_USER_CONFIG_DIR = Path.home() / ".openplanter"
+_USER_CONFIG_DIR = Path.home() / ".quantico"
 
 
 @dataclass(slots=True)
 class UserCredentialStore:
-    """User-level credential store at ~/.openplanter/credentials.json."""
+    """User-level credential store at ~/.quantico/credentials.json."""
     credentials_path: Path = field(init=False)
 
     def __post_init__(self) -> None:

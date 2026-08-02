@@ -127,8 +127,8 @@ def build_model_factory(cfg: AgentConfig) -> ModelFactory | None:
                 base_url=cfg.openrouter_base_url,
                 reasoning_effort=effort,
                 extra_headers={
-                    "HTTP-Referer": "https://github.com/openplanter",
-                    "X-Title": "OpenPlanter",
+                    "HTTP-Referer": "https://github.com/RemyLoveLogicAI/quantico-ai-agency",
+                    "X-Title": "Quantico",
                 },
             )
         if provider == "cerebras" and cfg.cerebras_api_key:
@@ -189,8 +189,8 @@ def build_engine(cfg: AgentConfig) -> RLMEngine:
             base_url=cfg.openrouter_base_url,
             reasoning_effort=cfg.reasoning_effort,
             extra_headers={
-                "HTTP-Referer": "https://github.com/openplanter",
-                "X-Title": "OpenPlanter",
+                "HTTP-Referer": "https://github.com/RemyLoveLogicAI/quantico-ai-agency",
+                "X-Title": "Quantico",
             },
         )
     elif cfg.provider == "cerebras" and cfg.cerebras_api_key:

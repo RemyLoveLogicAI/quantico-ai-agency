@@ -9,3 +9,5 @@ build/
 *.cast
 *.mp4
 .openplanter/
+.quantico/
+.venv/

@@ -46,7 +46,7 @@ class TestOfacSdnFetch(unittest.TestCase):
             req = urllib.request.Request(
                 cls.SDN_URL,
                 method='HEAD',
-                headers={'User-Agent': 'Mozilla/5.0 (compatible; OpenPlanter test)'}
+                headers={'User-Agent': 'Mozilla/5.0 (compatible; Quantico test)'}
             )
             with urllib.request.urlopen(req, timeout=10) as response:
                 return response.status == 200

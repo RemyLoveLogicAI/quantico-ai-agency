@@ -2,7 +2,7 @@
 
 These tests make actual HTTP calls and consume API credits.
 They are skipped automatically when the corresponding API key is
-not found in .openplanter/credentials.json.
+not found in .quantico/credentials.json.
 
 Run explicitly:
     PYTHONPATH=src python3 -m unittest tests.test_live_models -v
@@ -24,7 +24,7 @@ from agent.tools import WorkspaceTools
 # Load credentials once for the module
 # ---------------------------------------------------------------------------
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
-_cred_store = CredentialStore(workspace=_PROJECT_ROOT, session_root_dir=".openplanter")
+_cred_store = CredentialStore(workspace=_PROJECT_ROOT, session_root_dir=".quantico")
 _creds = _cred_store.load()
 
 _OPENAI_KEY = _creds.openai_api_key or ""
@@ -151,8 +151,8 @@ class OpenRouterLiveTests(unittest.TestCase):
             timeout_sec=30,
             strict_tools=False,
             extra_headers={
-                "HTTP-Referer": "https://github.com/openplanter",
-                "X-Title": "OpenPlanter",
+                "HTTP-Referer": "https://github.com/RemyLoveLogicAI/quantico-ai-agency",
+                "X-Title": "Quantico",
             },
         )
         conv = model.create_conversation(
