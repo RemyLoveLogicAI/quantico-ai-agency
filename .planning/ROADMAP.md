@@ -20,12 +20,12 @@
 
 ---
 
-### P2 — Dependency Bumps (in progress)
+### P2 — Dependency Bumps ✅ COMPLETE
 
 | Req | Issue/PR | Title | Severity | Status |
 |-----|----------|-------|----------|--------|
-| R8  | PR #4   | Bump cargo deps (3 updates) | LOW | open |
-| R9  | PR #1   | Bump npm_and_yarn deps (8 updates) | LOW | open |
+| R8  | PR #4   | Bump cargo deps (3 updates) | LOW | ✅ merged |
+| R9  | PR #1   | Bump npm_and_yarn deps (8 updates) | LOW | ✅ merged |
 
 **Acceptance:**
 - R8: cargo deps bumped, `cargo test` passes, desktop builds
@@ -33,7 +33,7 @@
 
 ---
 
-### P3 — Missing Dependencies in pyproject.toml
+### P3 — Missing Dependencies in pyproject.toml ✅ COMPLETE
 
 | Req | Title | Severity |
 |-----|-------|----------|
