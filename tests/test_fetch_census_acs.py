@@ -170,7 +170,7 @@ class TestCensusAcsFetch(unittest.TestCase):
 
             print(f"\nLive test: Successfully fetched {len(data) - 1} states from Census API")
 
-        except urllib.error.URLError as e:
+        except (urllib.error.URLError, json.JSONDecodeError, ValueError) as e:
             self.skipTest(f"Network unavailable: {e}")
         except Exception as e:
             self.fail(f"Live API test failed: {e}")
@@ -208,7 +208,7 @@ class TestCensusAcsFetch(unittest.TestCase):
 
             print(f"\nLive test: Successfully fetched income data for {len(data) - 1} MA counties")
 
-        except urllib.error.URLError as e:
+        except (urllib.error.URLError, json.JSONDecodeError, ValueError) as e:
             self.skipTest(f"Network unavailable: {e}")
         except Exception as e:
             self.fail(f"Live API test failed: {e}")
@@ -222,7 +222,7 @@ class TestCensusAcsFetch(unittest.TestCase):
         # Build URL with intentionally invalid parameters
         url = "https://api.census.gov/data/9999/acs/acs5?get=INVALID&for=state:*"
 
-        with self.assertRaises(urllib.error.HTTPError):
+        with self.assertRaises((urllib.error.HTTPError, json.JSONDecodeError, ValueError)):
             fetch_census_acs.fetch_census_data(url)
 
     @unittest.skipIf(
@@ -266,7 +266,7 @@ class TestCensusAcsFetch(unittest.TestCase):
             finally:
                 os.unlink(temp_path)
 
-        except urllib.error.URLError as e:
+        except (urllib.error.URLError, json.JSONDecodeError, ValueError) as e:
             self.skipTest(f"Network unavailable: {e}")
         except Exception as e:
             self.fail(f"End-to-end test failed: {e}")

@@ -1,0 +1,28 @@
+{
+  "git": {
+    "protected_branches": ["main"],
+    "on_protected": "ask",
+    "atomic_commits": true,
+    "conventional_commits": true
+  },
+  "review": {
+    "default_stakes": "medium",
+    "reviewers": {
+      "default": "claude-subagent"
+    },
+    "min_reviewers": 1,
+    "convergence_weight": true
+  },
+  "verification": {
+    "goal_backward_pass": true,
+    "coverage_audit": true,
+    "score_uncertain": true
+  },
+  "phases": {
+    "P1": { "name": "Failing Test Fixes", "stakes": "high", "status": "complete" },
+    "P2": { "name": "Dependency Bumps", "stakes": "low" },
+    "P3": { "name": "Missing Deps in pyproject.toml", "stakes": "high" },
+    "P4": { "name": "Desktop App Hardening", "stakes": "medium" },
+    "P5": { "name": "Investigation Pipeline Enhancements", "stakes": "medium" }
+  }
+}

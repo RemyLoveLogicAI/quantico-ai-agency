@@ -12,13 +12,13 @@ dependencies = [
     "rich>=13.0",
     "prompt_toolkit>=3.0",
     "pyfiglet>=1.0",
+    "networkx>=3.2",
+    "numpy>=1.24",
 ]
 
 [project.optional-dependencies]
 textual = [
     "textual>=0.89",
-    "networkx>=3.2",
-    "numpy>=1.24",
 ]
 test = [
     "pytest>=7.0",

@@ -19,14 +19,15 @@ import fetch_fec
 
 
 def check_network() -> bool:
-    """Check if FEC API is reachable."""
+    """Check if FEC API is reachable and not rate-limited."""
     import urllib.request
     import urllib.error
     try:
         url = f"{fetch_fec.API_BASE}/candidates/?api_key=DEMO_KEY&per_page=1"
-        urllib.request.urlopen(url, timeout=5)
-        return True
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError):
+        req = urllib.request.Request(url, headers={'User-Agent': 'quantico-test/1.0'})
+        resp = urllib.request.urlopen(req, timeout=5)
+        return resp.status == 200
+    except Exception:
         return False
 
 
