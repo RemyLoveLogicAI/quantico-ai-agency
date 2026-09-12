@@ -976,3 +976,142 @@ async fn test_solve_multi_step_agentic_loop() {
         errors
     );
 }
+
+// ─── Recursive subtask integration test ───
+
+const SUBTASK_TOOL_SSE: &str = r#"event: message_start
+data: {"type":"message_start","message":{"id":"msg_p1","type":"message","role":"assistant","content":[],"usage":{"input_tokens":10}}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_sub","name":"subtask","input":{}}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"objective\":\"count rows\",\"acceptance_criteria\":\"rows counted\"}"}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":5}}
+
+event: message_stop
+data: {"type":"message_stop"}
+
+"#;
+
+const TEXT_SSE_TEMPLATE: &str = r#"event: message_start
+data: {"type":"message_start","message":{"id":"msg_t","type":"message","role":"assistant","content":[],"usage":{"input_tokens":5}}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"TEXT"}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":0}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":3}}
+
+event: message_stop
+data: {"type":"message_stop"}
+
+"#;
+
+/// Mock Anthropic server routing by request body: the child loop gets a child
+/// answer, anything after a tool result (or the curator) gets "Done", and the
+/// root objective's first turn gets a subtask call. Records every body.
+async fn start_subtask_server(bodies: Arc<Mutex<Vec<String>>>) -> SocketAddr {
+    let app = Router::new().route(
+        "/{*path}",
+        post(move |body: String| {
+            let bodies = bodies.clone();
+            async move {
+                let sse = if body.contains("[depth 1/") {
+                    TEXT_SSE_TEMPLATE.replace("TEXT", "rows counted: 3")
+                } else if body.contains("tool_result") || !body.contains("Investigate ACME") {
+                    TEXT_SSE_TEMPLATE.replace("TEXT", "Done")
+                } else {
+                    SUBTASK_TOOL_SSE.to_string()
+                };
+                bodies.lock().unwrap().push(body);
+                Response::builder()
+                    .status(StatusCode::OK)
+                    .header("content-type", "text/event-stream")
+                    .body(Body::from(sse))
+                    .unwrap()
+            }
+        }),
+    );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+    addr
+}
+
+#[tokio::test]
+async fn test_solve_subtask_recursion() {
+    use op_core::config::AgentConfig;
+    use op_core::engine::{solve, SolveEmitter};
+    use op_core::events::StepEvent;
+
+    #[derive(Default)]
+    struct Rec {
+        events: Mutex<Vec<String>>,
+        steps: Mutex<Vec<(u32, bool)>>,
+    }
+    impl SolveEmitter for Rec {
+        fn emit_trace(&self, m: &str) {
+            self.events.lock().unwrap().push(format!("trace:{m}"));
+        }
+        fn emit_delta(&self, _: DeltaEvent) {}
+        fn emit_step(&self, e: StepEvent) {
+            self.steps.lock().unwrap().push((e.depth, e.is_final));
+        }
+        fn emit_complete(&self, r: &str) {
+            self.events.lock().unwrap().push(format!("complete:{r}"));
+        }
+        fn emit_error(&self, m: &str) {
+            self.events.lock().unwrap().push(format!("error:{m}"));
+        }
+    }
+
+    let bodies = Arc::new(Mutex::new(Vec::new()));
+    let addr = start_subtask_server(bodies.clone()).await;
+    let workspace = tempfile::tempdir().unwrap();
+    let cfg = AgentConfig {
+        provider: "anthropic".into(),
+        model: "claude-sonnet-4-5".into(),
+        anthropic_api_key: Some("test-key".into()),
+        anthropic_base_url: format!("http://{addr}"),
+        workspace: workspace.path().to_path_buf(),
+        demo: false,
+        ..Default::default()
+    };
+    let rec = Rec::default();
+    solve("Investigate ACME", &cfg, &rec, CancellationToken::new()).await;
+
+    let events = rec.events.lock().unwrap().clone();
+    assert!(!events.iter().any(|e| e.starts_with("error:")), "no errors: {events:?}");
+    assert_eq!(
+        events.iter().filter(|e| e.starts_with("complete:")).collect::<Vec<_>>(),
+        vec!["complete:Done"],
+        "only the root emits Complete"
+    );
+    assert!(events.iter().any(|e| e.contains("entering subtask: count rows")), "{events:?}");
+
+    let steps = rec.steps.lock().unwrap().clone();
+    assert!(steps.contains(&(1, true)), "child emits a depth-1 final step: {steps:?}");
+    assert!(steps.contains(&(0, true)), "root emits a final step: {steps:?}");
+
+    let bodies = bodies.lock().unwrap();
+    assert!(
+        bodies.iter().any(|b| b.contains("Subtask result for 'count rows'")
+            && b.contains("rows counted: 3")
+            && b.contains("[ACCEPTANCE CRITERIA: PASS]")),
+        "parent receives the judged child result"
+    );
+}

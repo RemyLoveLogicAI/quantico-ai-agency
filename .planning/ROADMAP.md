@@ -64,3 +64,20 @@
 | R16 | Add entity resolution across data sources | HIGH |
 | R17 | Add export to PDF / CSV report generation | MEDIUM |
 | R18 | Add multi-agent delegation (director → specialists) | HIGH |
+
+---
+
+## Milestone: v0.3 — One Engine, Evidence-First Architecture
+
+Target: one Rust engine served over MCP; DuckDB as the evidence store; graph, wiki and reports as views of a claims table. See FILED.md D3/D4.
+
+| Phase | Req | Title | Estimate | Status |
+|-------|-----|-------|----------|--------|
+| A1 | R19 | Port subtask/execute recursion into op-core (heuristic judge) | 1–2 days | ✅ done (tests green; runtime-checked vs mock) |
+| A2 | R20 | DuckDB evidence store + `sql` tool; provenance (URL, fetched_at, hash) per row | 1 day | pending |
+| A3 | R21 | Claims table → graph + wiki; time slider on dated edges | 2–3 days | pending |
+| A4 | R16 | Entity resolution: hard IDs → Splink on DuckDB → LLM for gray zone | 2–3 days | pending |
+| A5 | R17 | Steer-from-graph subtasks + evidence-locked report (Typst PDF) | 2 days | pending |
+| A6 | R22 | Serve op-core over MCP; retire Bun gateway | TBD | pending |
+
+Follow-ups for A1: per-subtask model routing, LLM judge, write isolation for concurrent children.

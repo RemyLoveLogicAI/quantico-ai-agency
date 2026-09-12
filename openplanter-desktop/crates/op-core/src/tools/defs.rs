@@ -294,6 +294,43 @@ fn mvp_tool_defs() -> Vec<ToolDef> {
     ]
 }
 
+/// subtask + execute schemas, mirroring the Python agent. Without acceptance
+/// criteria mode, `acceptance_criteria` is dropped from the schema.
+// ponytail: no `model`/`reasoning_effort` routing args yet; children reuse the parent model.
+fn delegation_tool_defs(acceptance_criteria: bool) -> Vec<ToolDef> {
+    let params = |objective: &str| {
+        let mut p = json!({
+            "type": "object",
+            "properties": {
+                "objective": { "type": "string", "description": objective },
+                "acceptance_criteria": {
+                    "type": "string",
+                    "description": "Acceptance criteria for judging the result. A judge evaluates the result against these criteria and appends PASS/FAIL to your observation. Be specific and verifiable."
+                }
+            },
+            "required": ["objective", "acceptance_criteria"],
+            "additionalProperties": false
+        });
+        if !acceptance_criteria {
+            p["properties"].as_object_mut().unwrap().remove("acceptance_criteria");
+            p["required"] = json!(["objective"]);
+        }
+        p
+    };
+    vec![
+        ToolDef {
+            name: "subtask",
+            description: "Spawn a recursive sub-agent to solve a smaller sub-problem. The result is returned as an observation.",
+            parameters: params("Clear objective for the sub-agent to accomplish."),
+        },
+        ToolDef {
+            name: "execute",
+            description: "Hand an atomic sub-problem to a leaf executor agent with full tool access. Use this when the sub-problem requires no further decomposition and can be solved directly (e.g. write a file, run tests, apply a patch). The executor has no subtask or execute tools — it must solve the objective in one pass.",
+            parameters: params("Clear, specific objective for the executor to accomplish."),
+        },
+    ]
+}
+
 /// For OpenAI strict mode: make all properties required, wrapping optional ones
 /// with `anyOf [original, null]`. Recurse into nested objects and array items.
 fn strict_fixup(schema: &mut Value) {
@@ -365,11 +402,18 @@ fn strict_fixup(schema: &mut Value) {
     }
 }
 
-/// Convert to OpenAI tools format: `[{ type: "function", function: { name, description, parameters, strict } }]`
-pub fn to_openai_tools() -> Vec<Value> {
-    mvp_tool_defs()
-        .into_iter()
+/// Convert defs to the provider's shape: Anthropic `{ name, description, input_schema }`,
+/// anything else OpenAI strict `{ type: "function", function: { name, description, parameters, strict } }`.
+fn convert(defs: Vec<ToolDef>, provider: &str) -> Vec<Value> {
+    defs.into_iter()
         .map(|def| {
+            if provider == "anthropic" {
+                return json!({
+                    "name": def.name,
+                    "description": def.description,
+                    "input_schema": def.parameters
+                });
+            }
             let mut params = def.parameters;
             strict_fixup(&mut params);
             json!({
@@ -385,26 +429,28 @@ pub fn to_openai_tools() -> Vec<Value> {
         .collect()
 }
 
-/// Convert to Anthropic tools format: `[{ name, description, input_schema }]`
+/// Convert to OpenAI tools format.
+pub fn to_openai_tools() -> Vec<Value> {
+    convert(mvp_tool_defs(), "openai")
+}
+
+/// Convert to Anthropic tools format.
 pub fn to_anthropic_tools() -> Vec<Value> {
-    mvp_tool_defs()
-        .into_iter()
-        .map(|def| {
-            json!({
-                "name": def.name,
-                "description": def.description,
-                "input_schema": def.parameters
-            })
-        })
-        .collect()
+    convert(mvp_tool_defs(), "anthropic")
 }
 
 /// Build tool definitions for the given provider.
 pub fn build_tool_defs(provider: &str) -> Vec<Value> {
-    match provider {
-        "anthropic" => to_anthropic_tools(),
-        _ => to_openai_tools(),
+    convert(mvp_tool_defs(), provider)
+}
+
+/// Tool definitions for an engine loop; `delegation` adds subtask + execute.
+pub fn build_engine_tool_defs(provider: &str, delegation: bool, acceptance_criteria: bool) -> Vec<Value> {
+    let mut defs = mvp_tool_defs();
+    if delegation {
+        defs.extend(delegation_tool_defs(acceptance_criteria));
     }
+    convert(defs, provider)
 }
 
 /// List of all known tool names.
@@ -422,35 +468,7 @@ pub fn build_curator_tool_defs(provider: &str) -> Vec<Value> {
         .into_iter()
         .filter(|d| CURATOR_TOOL_NAMES.contains(&d.name))
         .collect();
-
-    match provider {
-        "anthropic" => filtered
-            .into_iter()
-            .map(|def| {
-                json!({
-                    "name": def.name,
-                    "description": def.description,
-                    "input_schema": def.parameters
-                })
-            })
-            .collect(),
-        _ => filtered
-            .into_iter()
-            .map(|def| {
-                let mut params = def.parameters;
-                strict_fixup(&mut params);
-                json!({
-                    "type": "function",
-                    "function": {
-                        "name": def.name,
-                        "description": def.description,
-                        "parameters": params,
-                        "strict": true
-                    }
-                })
-            })
-            .collect(),
-    }
+    convert(filtered, provider)
 }
 
 #[cfg(test)]
@@ -505,6 +523,21 @@ mod tests {
         assert!(names.contains(&"web_search"));
         assert!(names.contains(&"think"));
         assert!(names.contains(&"apply_patch"));
+    }
+
+    #[test]
+    fn test_engine_tool_defs_delegation() {
+        let flat = build_engine_tool_defs("anthropic", false, true);
+        assert!(!flat.iter().any(|t| t["name"] == "subtask" || t["name"] == "execute"));
+
+        let rec = build_engine_tool_defs("anthropic", true, true);
+        let sub = rec.iter().find(|t| t["name"] == "subtask").unwrap();
+        assert_eq!(sub["input_schema"]["required"], json!(["objective", "acceptance_criteria"]));
+        assert!(rec.iter().any(|t| t["name"] == "execute"));
+
+        let no_ac = build_engine_tool_defs("anthropic", true, false);
+        let sub = no_ac.iter().find(|t| t["name"] == "subtask").unwrap();
+        assert!(sub["input_schema"]["properties"].get("acceptance_criteria").is_none());
     }
 
     #[test]
