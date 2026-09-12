@@ -80,4 +80,10 @@ Target: one Rust engine served over MCP; DuckDB as the evidence store; graph, wi
 | A5 | R17 | Steer-from-graph subtasks + evidence-locked report (Typst PDF) | 2 days | pending |
 | A6 | R22 | Serve op-core over MCP; retire Bun gateway | TBD | pending |
 
-Follow-ups for A1: per-subtask model routing, LLM judge, write isolation for concurrent children.
+A1 review (rust-reviewer, 2 rounds): sibling write conflicts, per-child bg-job loss and per-child read tracking fixed in 951a12a; approved.
+
+Follow-ups for A1:
+- Per-subtask model routing (`model`/`reasoning_effort` args); children reuse the parent model today.
+- LLM judge instead of the keyword-overlap heuristic.
+- MEDIUM: the shared `WorkspaceTools` mutex is held across `web_search`/`fetch_url` network waits, so a sibling's fast tool call waits for another sibling's HTTP round trip. Release the lock around network I/O.
+- Pre-existing: `run_shell` blocks the async runtime (sync spawn + `thread::sleep`); move it to `spawn_blocking`.
