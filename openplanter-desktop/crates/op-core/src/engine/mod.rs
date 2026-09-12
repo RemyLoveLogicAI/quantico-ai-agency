@@ -6,6 +6,7 @@
 pub mod context;
 pub mod curator;
 pub mod judge;
+mod claims;
 
 use futures::future::{join_all, BoxFuture};
 use tokio::sync::mpsc;
@@ -18,9 +19,10 @@ use crate::events::{DeltaEvent, DeltaKind, StepEvent, TokenUsage};
 use crate::model::{BaseModel, Message, ToolCall};
 use crate::prompts::build_system_prompt;
 use crate::tools::defs::build_engine_tool_defs;
-use crate::tools::WorkspaceTools;
+use crate::tools::{ToolResult, WorkspaceTools};
 
 use self::curator::{extract_step_context, run_curator, CuratorResult};
+use self::claims::{write_targets, WriteClaims};
 use self::judge::{AcceptanceCriteriaJudge, JudgeVerdict};
 
 /// Tools that spawn a child loop instead of running in WorkspaceTools.
@@ -225,6 +227,10 @@ struct SolveCtx<'a> {
     provider: &'a str,
     emitter: &'a dyn SolveEmitter,
     cancel: &'a CancellationToken,
+    /// One tool set for the whole call tree, like the Python agent: background
+    /// jobs and the read-before-write set survive across subtask boundaries.
+    tools: tokio::sync::Mutex<WorkspaceTools>,
+    claims: std::sync::Mutex<WriteClaims>,
 }
 
 /// Real solve flow with a multi-step agentic loop.
@@ -266,9 +272,13 @@ pub async fn solve(
         provider: &provider,
         emitter,
         cancel: &cancel,
+        tools: tokio::sync::Mutex::new(WorkspaceTools::new(config)),
+        claims: std::sync::Mutex::new(WriteClaims::default()),
     };
     // Depth 0 emits Complete itself (before waiting on curators); only errors surface here.
-    if let Err(e) = solve_loop(&ctx, objective.to_string(), 0, false).await {
+    let outcome = solve_loop(&ctx, objective.to_string(), 0, String::new(), false).await;
+    ctx.tools.lock().await.cleanup();
+    if let Err(e) = outcome {
         emitter.emit_error(&e);
     }
 }
@@ -276,11 +286,12 @@ pub async fn solve(
 /// One REPL loop at `depth`. Returns the final answer, or an error message
 /// ("Cancelled", model error, budget exhausted). Only depth 0 streams deltas,
 /// runs the curator, and emits Complete. `leaf` loops (from `execute`) get
-/// no delegation tools.
+/// no delegation tools. `owner` is this loop's key in the task tree (see claims.rs).
 fn solve_loop<'a>(
     ctx: &'a SolveCtx<'a>,
     objective: String,
     depth: u32,
+    owner: String,
     leaf: bool,
 ) -> BoxFuture<'a, Result<String, String>> {
     Box::pin(async move {
@@ -288,7 +299,6 @@ fn solve_loop<'a>(
         let emitter = ctx.emitter;
         let delegation = config.recursive && !leaf;
         let tool_defs = build_engine_tool_defs(ctx.provider, delegation, config.acceptance_criteria);
-        let mut tools = WorkspaceTools::new(config);
 
         let system_prompt = build_system_prompt(
             config.recursive,
@@ -326,7 +336,6 @@ fn solve_loop<'a>(
 
         for step in 1..=max_steps {
             if ctx.cancel.is_cancelled() {
-                tools.cleanup();
                 abort_curators(&mut curator_handles);
                 return Err("Cancelled".into());
             }
@@ -346,7 +355,6 @@ fn solve_loop<'a>(
             {
                 Ok(t) => t,
                 Err(e) => {
-                    tools.cleanup();
                     abort_curators(&mut curator_handles);
                     return Err(e.to_string());
                 }
@@ -380,8 +388,8 @@ fn solve_loop<'a>(
                 emitter.emit_step(step_event(None, true));
                 if depth == 0 {
                     emitter.emit_complete(&turn.text);
+                    ctx.tools.lock().await.cleanup();
                 }
-                tools.cleanup();
                 // Wait for in-flight curators before exiting
                 finish_curators(&mut curator_handles, &mut curator_rx, &mut messages, emitter).await;
                 return Ok(turn.text);
@@ -394,13 +402,17 @@ fn solve_loop<'a>(
                     continue;
                 }
                 if ctx.cancel.is_cancelled() {
-                    tools.cleanup();
                     abort_curators(&mut curator_handles);
                     return Err("Cancelled".into());
                 }
 
                 emitter.emit_trace(&format!("Executing tool: {} ({})", tc.name, tc.id));
-                let result = tools.execute(&tc.name, &tc.arguments).await;
+                let targets = write_targets(&config.workspace, &tc.name, &tc.arguments);
+                let claimed = ctx.claims.lock().unwrap().claim(&targets, &owner);
+                let result = match claimed {
+                    Ok(()) => ctx.tools.lock().await.execute(&tc.name, &tc.arguments).await,
+                    Err(conflict) => ToolResult::error(conflict),
+                };
 
                 if result.is_error {
                     emitter.emit_trace(&format!("Tool {} error: {}", tc.name, &result.content[..result.content.len().min(200)]));
@@ -413,9 +425,18 @@ fn solve_loop<'a>(
                 .iter()
                 .enumerate()
                 .filter(|(_, tc)| DELEGATION_TOOLS.contains(&tc.name.as_str()))
-                .map(|(i, tc)| async move { (i, run_delegation(ctx, tc, depth, delegation).await) });
+                .map(|(i, tc)| {
+                    let child_owner = format!("{owner}/s{step}.{i}");
+                    async move { (i, run_delegation(ctx, tc, depth, delegation, child_owner).await) }
+                });
             for (i, observation) in join_all(children).await {
                 results[i] = observation;
+            }
+            // The children are done, so their write claims no longer guard anything.
+            ctx.claims.lock().unwrap().release_descendants(&owner);
+            if ctx.cancel.is_cancelled() {
+                abort_curators(&mut curator_handles);
+                return Err("Cancelled".into());
             }
 
             for (tc, content) in turn.tool_calls.iter().zip(results) {
@@ -464,7 +485,6 @@ fn solve_loop<'a>(
         }
 
         // Budget exhausted
-        tools.cleanup();
         finish_curators(&mut curator_handles, &mut curator_rx, &mut messages, emitter).await;
         Err(format!(
             "Step budget exhausted after {max_steps} steps. \
@@ -474,7 +494,13 @@ fn solve_loop<'a>(
 }
 
 /// Run one subtask/execute call as a child loop and return the parent's observation.
-async fn run_delegation<'a>(ctx: &'a SolveCtx<'a>, tc: &ToolCall, depth: u32, allowed: bool) -> String {
+async fn run_delegation<'a>(
+    ctx: &'a SolveCtx<'a>,
+    tc: &ToolCall,
+    depth: u32,
+    allowed: bool,
+    owner: String,
+) -> String {
     let args: serde_json::Value = serde_json::from_str(&tc.arguments).unwrap_or_default();
     let field = |key: &str| args.get(key).and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
     let (objective, criteria) = (field("objective"), field("acceptance_criteria"));
@@ -504,7 +530,7 @@ async fn run_delegation<'a>(ctx: &'a SolveCtx<'a>, tc: &ToolCall, depth: u32, al
     };
     ctx.emitter.emit_trace(&format!("[d{depth}] >> {verb}: {objective}"));
 
-    let result = match solve_loop(ctx, objective.clone(), depth + 1, leaf).await {
+    let result = match solve_loop(ctx, objective.clone(), depth + 1, owner, leaf).await {
         Ok(r) => r,
         Err(e) => return format!("{label} failed for '{objective}': {e}"),
     };
