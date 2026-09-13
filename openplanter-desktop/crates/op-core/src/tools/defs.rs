@@ -305,7 +305,7 @@ fn delegation_tool_defs(acceptance_criteria: bool) -> Vec<ToolDef> {
                 "objective": { "type": "string", "description": objective },
                 "acceptance_criteria": {
                     "type": "string",
-                    "description": "Acceptance criteria for judging the result. A judge evaluates the result against these criteria and appends PASS/FAIL to your observation. Be specific and verifiable."
+                    "description": "Acceptance criteria for judging the result. A judge evaluates the result against these criteria and appends PASS, PARTIAL or FAIL to your observation. Be specific and verifiable."
                 }
             },
             "required": ["objective", "acceptance_criteria"],

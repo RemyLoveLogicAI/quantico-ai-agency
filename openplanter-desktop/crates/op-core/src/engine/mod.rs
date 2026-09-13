@@ -300,9 +300,10 @@ fn solve_loop<'a>(
         let delegation = config.recursive && !leaf;
         let tool_defs = build_engine_tool_defs(ctx.provider, delegation, config.acceptance_criteria);
 
+        // Executors have no delegation tools, so don't teach them delegation.
         let system_prompt = build_system_prompt(
-            config.recursive,
-            config.acceptance_criteria,
+            delegation,
+            config.acceptance_criteria && delegation,
             config.demo,
         );
         let user_content = if depth == 0 {
@@ -410,7 +411,15 @@ fn solve_loop<'a>(
                 let targets = write_targets(&config.workspace, &tc.name, &tc.arguments);
                 let claimed = ctx.claims.lock().unwrap().claim(&targets, &owner);
                 let result = match claimed {
-                    Ok(()) => ctx.tools.lock().await.execute(&tc.name, &tc.arguments).await,
+                    Ok(previous) => {
+                        let result = ctx.tools.lock().await.execute(&tc.name, &tc.arguments).await;
+                        // A failed single-file write changed nothing, so it shouldn't block
+                        // siblings. apply_patch keeps its claims: it may fail mid-patch.
+                        if result.is_error && tc.name != "apply_patch" {
+                            ctx.claims.lock().unwrap().restore(previous);
+                        }
+                        result
+                    }
                     Err(conflict) => ToolResult::error(conflict),
                 };
 
@@ -432,8 +441,9 @@ fn solve_loop<'a>(
             for (i, observation) in join_all(children).await {
                 results[i] = observation;
             }
-            // The children are done, so their write claims no longer guard anything.
-            ctx.claims.lock().unwrap().release_descendants(&owner);
+            // The children are done; their claims pass up to this loop, which is still
+            // running inside any enclosing fan-out.
+            ctx.claims.lock().unwrap().promote_descendants(&owner);
             if ctx.cancel.is_cancelled() {
                 abort_curators(&mut curator_handles);
                 return Err("Cancelled".into());
@@ -534,7 +544,10 @@ async fn run_delegation<'a>(
         Ok(r) => r,
         Err(e) => return format!("{label} failed for '{objective}': {e}"),
     };
-    let mut observation = format!("{label} result for '{objective}':\n{result}");
+    let mut observation = format!(
+        "{label} result for '{objective}':\n{}",
+        clip(&result, ctx.config.max_observation_chars as usize)
+    );
 
     if ctx.config.acceptance_criteria && !criteria.is_empty() {
         // ponytail: keyword-overlap judge; Python uses a cheap-model judge — port that if verdicts prove noisy.
@@ -547,6 +560,22 @@ async fn run_delegation<'a>(
         observation.push_str(&format!("\n\n[ACCEPTANCE CRITERIA: {tag}]\n{}", verdict.reasoning));
     }
     observation
+}
+
+/// Clip child output like tool output, cutting on a char boundary.
+fn clip(text: &str, max_chars: usize) -> String {
+    if text.len() <= max_chars {
+        return text.to_string();
+    }
+    let cut = (0..=max_chars)
+        .rev()
+        .find(|&i| text.is_char_boundary(i))
+        .unwrap_or(0);
+    format!(
+        "{}\n\n...[truncated {} chars]...",
+        &text[..cut],
+        text.len() - cut
+    )
 }
 
 #[cfg(test)]
@@ -792,6 +821,15 @@ mod tests {
             })
             .unwrap();
         assert!(complete_text.contains("Spawned test"));
+    }
+
+    #[test]
+    fn test_clip_cuts_on_char_boundary() {
+        assert_eq!(clip("short", 10), "short");
+        // "é" is 2 bytes; a cut at byte 3 would split it.
+        let clipped = clip("aaé-rest", 3);
+        assert!(clipped.starts_with("aa\n"), "{clipped}");
+        assert!(clipped.contains("truncated 7 chars"), "{clipped}");
     }
 
     #[test]
