@@ -6,7 +6,9 @@
 pub mod context;
 pub mod curator;
 pub mod judge;
+mod claims;
 
+use futures::future::{join_all, BoxFuture};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
@@ -14,12 +16,17 @@ use tokio_util::sync::CancellationToken;
 use crate::builder::build_model;
 use crate::config::AgentConfig;
 use crate::events::{DeltaEvent, DeltaKind, StepEvent, TokenUsage};
-use crate::model::Message;
+use crate::model::{BaseModel, Message, ToolCall};
 use crate::prompts::build_system_prompt;
-use crate::tools::defs::build_tool_defs;
-use crate::tools::WorkspaceTools;
+use crate::tools::defs::build_engine_tool_defs;
+use crate::tools::{ToolResult, WorkspaceTools};
 
 use self::curator::{extract_step_context, run_curator, CuratorResult};
+use self::claims::{write_targets, WriteClaims};
+use self::judge::{AcceptanceCriteriaJudge, JudgeVerdict};
+
+/// Tools that spawn a child loop instead of running in WorkspaceTools.
+const DELEGATION_TOOLS: [&str; 2] = ["subtask", "execute"];
 
 /// Outcome from a background curator task (success or error).
 enum CuratorOutcome {
@@ -213,11 +220,25 @@ fn compact_messages(messages: &mut Vec<Message>, max_tokens: usize) {
     }
 }
 
+/// Per-solve state shared by every recursion level.
+struct SolveCtx<'a> {
+    config: &'a AgentConfig,
+    model: &'a dyn BaseModel,
+    provider: &'a str,
+    emitter: &'a dyn SolveEmitter,
+    cancel: &'a CancellationToken,
+    /// One tool set for the whole call tree, like the Python agent: background
+    /// jobs and the read-before-write set survive across subtask boundaries.
+    tools: tokio::sync::Mutex<WorkspaceTools>,
+    claims: std::sync::Mutex<WriteClaims>,
+}
+
 /// Real solve flow with a multi-step agentic loop.
 ///
 /// Calls the model with tool definitions. If the model returns tool calls,
 /// executes them, appends results, and loops until the model returns a
-/// final text answer or the step budget is exhausted.
+/// final text answer or the step budget is exhausted. `subtask`/`execute`
+/// calls recurse into child loops at depth+1.
 ///
 /// Falls back to demo_solve when `config.demo` is true.
 pub async fn solve(
@@ -230,7 +251,6 @@ pub async fn solve(
         return demo_solve(objective, emitter, cancel).await;
     }
 
-    // 1. Build model
     let model = match build_model(config) {
         Ok(m) => m,
         Err(e) => {
@@ -246,82 +266,113 @@ pub async fn solve(
         model.model_name()
     ));
 
-    // 2. Build tools and messages
-    let tool_defs = build_tool_defs(&provider);
-    let mut tools = WorkspaceTools::new(config);
+    let ctx = SolveCtx {
+        config,
+        model: model.as_ref(),
+        provider: &provider,
+        emitter,
+        cancel: &cancel,
+        tools: tokio::sync::Mutex::new(WorkspaceTools::new(config)),
+        claims: std::sync::Mutex::new(WriteClaims::default()),
+    };
+    // Depth 0 emits Complete itself (before waiting on curators); only errors surface here.
+    let outcome = solve_loop(&ctx, objective.to_string(), 0, String::new(), false).await;
+    ctx.tools.lock().await.cleanup();
+    if let Err(e) = outcome {
+        emitter.emit_error(&e);
+    }
+}
 
-    let system_prompt = build_system_prompt(
-        config.recursive,
-        config.acceptance_criteria,
-        config.demo,
-    );
-    let mut messages = vec![
-        Message::System {
-            content: system_prompt,
-        },
-        Message::User {
-            content: objective.to_string(),
-        },
-    ];
+/// One REPL loop at `depth`. Returns the final answer, or an error message
+/// ("Cancelled", model error, budget exhausted). Only depth 0 streams deltas,
+/// runs the curator, and emits Complete. `leaf` loops (from `execute`) get
+/// no delegation tools. `owner` is this loop's key in the task tree (see claims.rs).
+fn solve_loop<'a>(
+    ctx: &'a SolveCtx<'a>,
+    objective: String,
+    depth: u32,
+    owner: String,
+    leaf: bool,
+) -> BoxFuture<'a, Result<String, String>> {
+    Box::pin(async move {
+        let config = ctx.config;
+        let emitter = ctx.emitter;
+        let delegation = config.recursive && !leaf;
+        let tool_defs = build_engine_tool_defs(ctx.provider, delegation, config.acceptance_criteria);
 
-    let max_steps = config.max_steps_per_call as usize;
+        let system_prompt = build_system_prompt(
+            config.recursive,
+            config.acceptance_criteria,
+            config.demo,
+        );
+        let user_content = if depth == 0 {
+            objective
+        } else {
+            format!(
+                "{objective}\n\n[depth {depth}/{}] The parent has surveyed — READ only what this objective requires, then act.",
+                config.max_depth
+            )
+        };
+        let mut messages = vec![
+            Message::System {
+                content: system_prompt,
+            },
+            Message::User {
+                content: user_content,
+            },
+        ];
 
-    // 3. Background curator channel
-    let (curator_tx, mut curator_rx) = mpsc::unbounded_channel::<CuratorOutcome>();
-    let mut curator_handles: Vec<JoinHandle<()>> = Vec::new();
+        let max_steps = config.max_steps_per_call as usize;
 
-    // 4. Agentic loop
-    for step in 1..=max_steps {
-        if cancel.is_cancelled() {
-            emitter.emit_error("Cancelled");
-            tools.cleanup();
-            abort_curators(&mut curator_handles);
-            return;
-        }
+        // Background curator channel (depth 0 only)
+        let (curator_tx, mut curator_rx) = mpsc::unbounded_channel::<CuratorOutcome>();
+        let mut curator_handles: Vec<JoinHandle<()>> = Vec::new();
 
-        // Drain completed curator results and inject as system messages
-        drain_curator_results(&mut curator_rx, &mut messages, emitter);
-
-        let step_start = std::time::Instant::now();
-
-        // Compact context if it's grown too large (~100k token budget)
-        compact_messages(&mut messages, 100_000);
-
-        // Call model with streaming
-        let turn = match model
-            .chat_stream(&messages, &tool_defs, &|delta| emitter.emit_delta(delta), &cancel)
-            .await
-        {
-            Ok(t) => t,
-            Err(e) => {
-                let msg = e.to_string();
-                tools.cleanup();
-                abort_curators(&mut curator_handles);
-                if msg == "Cancelled" {
-                    emitter.emit_error("Cancelled");
-                } else {
-                    emitter.emit_error(&msg);
-                }
-                return;
+        let on_delta = move |delta: DeltaEvent| {
+            if depth == 0 {
+                emitter.emit_delta(delta);
             }
         };
 
-        // Append assistant message to conversation
-        let tool_calls_opt = if turn.tool_calls.is_empty() {
-            None
-        } else {
-            Some(turn.tool_calls.clone())
-        };
-        messages.push(Message::Assistant {
-            content: turn.text.clone(),
-            tool_calls: tool_calls_opt,
-        });
+        for step in 1..=max_steps {
+            if ctx.cancel.is_cancelled() {
+                abort_curators(&mut curator_handles);
+                return Err("Cancelled".into());
+            }
 
-        // No tool calls → final answer
-        if turn.tool_calls.is_empty() {
-            let tool_name = None;
-            emitter.emit_step(StepEvent {
-                depth: 0,
+            // Drain completed curator results and inject as system messages
+            drain_curator_results(&mut curator_rx, &mut messages, emitter);
+
+            let step_start = std::time::Instant::now();
+
+            // Compact context if it's grown too large (~100k token budget)
+            compact_messages(&mut messages, 100_000);
+
+            let turn = match ctx
+                .model
+                .chat_stream(&messages, &tool_defs, &on_delta, ctx.cancel)
+                .await
+            {
+                Ok(t) => t,
+                Err(e) => {
+                    abort_curators(&mut curator_handles);
+                    return Err(e.to_string());
+                }
+            };
+
+            // Append assistant message to conversation
+            let tool_calls_opt = if turn.tool_calls.is_empty() {
+                None
+            } else {
+                Some(turn.tool_calls.clone())
+            };
+            messages.push(Message::Assistant {
+                content: turn.text.clone(),
+                tool_calls: tool_calls_opt,
+            });
+
+            let step_event = |tool_name: Option<String>, is_final: bool| StepEvent {
+                depth,
                 step: step as u32,
                 tool_name,
                 tokens: TokenUsage {
@@ -329,88 +380,173 @@ pub async fn solve(
                     output_tokens: turn.output_tokens,
                 },
                 elapsed_ms: step_start.elapsed().as_millis() as u64,
-                is_final: true,
-            });
-            emitter.emit_complete(&turn.text);
-            tools.cleanup();
-            // Wait for in-flight curators before exiting
-            finish_curators(&mut curator_handles, &mut curator_rx, &mut messages, emitter).await;
-            return;
-        }
+                is_final,
+            };
 
-        // Execute each tool call and collect results
-        for tc in &turn.tool_calls {
-            if cancel.is_cancelled() {
-                emitter.emit_error("Cancelled");
-                tools.cleanup();
-                abort_curators(&mut curator_handles);
-                return;
+            // No tool calls → final answer
+            if turn.tool_calls.is_empty() {
+                emitter.emit_step(step_event(None, true));
+                if depth == 0 {
+                    emitter.emit_complete(&turn.text);
+                    ctx.tools.lock().await.cleanup();
+                }
+                // Wait for in-flight curators before exiting
+                finish_curators(&mut curator_handles, &mut curator_rx, &mut messages, emitter).await;
+                return Ok(turn.text);
             }
 
-            emitter.emit_trace(&format!("Executing tool: {} ({})", tc.name, tc.id));
-            let result = tools.execute(&tc.name, &tc.arguments).await;
+            // Regular tools run sequentially; subtask/execute children run concurrently.
+            let mut results = vec![String::new(); turn.tool_calls.len()];
+            for (i, tc) in turn.tool_calls.iter().enumerate() {
+                if DELEGATION_TOOLS.contains(&tc.name.as_str()) {
+                    continue;
+                }
+                if ctx.cancel.is_cancelled() {
+                    abort_curators(&mut curator_handles);
+                    return Err("Cancelled".into());
+                }
 
-            if result.is_error {
-                emitter.emit_trace(&format!("Tool {} error: {}", tc.name, &result.content[..result.content.len().min(200)]));
-            }
-
-            messages.push(Message::Tool {
-                tool_call_id: tc.id.clone(),
-                content: result.content,
-            });
-        }
-
-        // Emit step (non-final) AFTER tools execute so the frontend
-        // can refresh the wiki graph with newly written files.
-        let first_tool = turn.tool_calls.first().map(|tc| tc.name.clone());
-        emitter.emit_step(StepEvent {
-            depth: 0,
-            step: step as u32,
-            tool_name: first_tool,
-            tokens: TokenUsage {
-                input_tokens: turn.input_tokens,
-                output_tokens: turn.output_tokens,
-            },
-            elapsed_ms: step_start.elapsed().as_millis() as u64,
-            is_final: false,
-        });
-
-        // Spawn background curator after each non-final step
-        let context = extract_step_context(&messages);
-        if !context.is_empty() {
-            let tx = curator_tx.clone();
-            let curator_cfg = config.clone();
-            let curator_cancel = cancel.clone();
-            emitter.emit_trace(&format!("[curator] spawning for step {step}"));
-            curator_handles.push(tokio::spawn(async move {
-                let outcome = match run_curator(&context, &curator_cfg, curator_cancel).await {
-                    Ok(result) => CuratorOutcome::Done(result),
-                    Err(e) => CuratorOutcome::Error(e),
+                emitter.emit_trace(&format!("Executing tool: {} ({})", tc.name, tc.id));
+                let targets = write_targets(&config.workspace, &tc.name, &tc.arguments);
+                let claimed = ctx.claims.lock().unwrap().claim(&targets, &owner);
+                let result = match claimed {
+                    Ok(()) => ctx.tools.lock().await.execute(&tc.name, &tc.arguments).await,
+                    Err(conflict) => ToolResult::error(conflict),
                 };
-                let _ = tx.send(outcome);
-            }));
+
+                if result.is_error {
+                    emitter.emit_trace(&format!("Tool {} error: {}", tc.name, &result.content[..result.content.len().min(200)]));
+                }
+                results[i] = result.content;
+            }
+
+            let children = turn
+                .tool_calls
+                .iter()
+                .enumerate()
+                .filter(|(_, tc)| DELEGATION_TOOLS.contains(&tc.name.as_str()))
+                .map(|(i, tc)| {
+                    let child_owner = format!("{owner}/s{step}.{i}");
+                    async move { (i, run_delegation(ctx, tc, depth, delegation, child_owner).await) }
+                });
+            for (i, observation) in join_all(children).await {
+                results[i] = observation;
+            }
+            // The children are done, so their write claims no longer guard anything.
+            ctx.claims.lock().unwrap().release_descendants(&owner);
+            if ctx.cancel.is_cancelled() {
+                abort_curators(&mut curator_handles);
+                return Err("Cancelled".into());
+            }
+
+            for (tc, content) in turn.tool_calls.iter().zip(results) {
+                messages.push(Message::Tool {
+                    tool_call_id: tc.id.clone(),
+                    content,
+                });
+            }
+
+            // Emit step (non-final) AFTER tools execute so the frontend
+            // can refresh the wiki graph with newly written files.
+            let first_tool = turn.tool_calls.first().map(|tc| tc.name.clone());
+            emitter.emit_step(step_event(first_tool, false));
+
+            // Spawn background curator after each non-final root step
+            let context = if depth == 0 {
+                extract_step_context(&messages)
+            } else {
+                String::new()
+            };
+            if !context.is_empty() {
+                let tx = curator_tx.clone();
+                let curator_cfg = config.clone();
+                let curator_cancel = ctx.cancel.clone();
+                emitter.emit_trace(&format!("[curator] spawning for step {step}"));
+                curator_handles.push(tokio::spawn(async move {
+                    let outcome = match run_curator(&context, &curator_cfg, curator_cancel).await {
+                        Ok(result) => CuratorOutcome::Done(result),
+                        Err(e) => CuratorOutcome::Error(e),
+                    };
+                    let _ = tx.send(outcome);
+                }));
+            }
+
+            // Budget warnings
+            let remaining = max_steps - step;
+            if remaining == max_steps / 2 {
+                emitter.emit_trace(&format!(
+                    "[d{depth}] Step budget: {remaining}/{max_steps} steps remaining (50%)"
+                ));
+            } else if remaining == max_steps / 4 {
+                emitter.emit_trace(&format!(
+                    "[d{depth}] Step budget: {remaining}/{max_steps} steps remaining (25%)"
+                ));
+            }
         }
 
-        // Budget warnings
-        let remaining = max_steps - step;
-        if remaining == max_steps / 2 {
-            emitter.emit_trace(&format!(
-                "Step budget: {remaining}/{max_steps} steps remaining (50%)"
-            ));
-        } else if remaining == max_steps / 4 {
-            emitter.emit_trace(&format!(
-                "Step budget: {remaining}/{max_steps} steps remaining (25%)"
-            ));
-        }
+        // Budget exhausted
+        finish_curators(&mut curator_handles, &mut curator_rx, &mut messages, emitter).await;
+        Err(format!(
+            "Step budget exhausted after {max_steps} steps. \
+             The model did not produce a final answer within the allowed steps."
+        ))
+    })
+}
+
+/// Run one subtask/execute call as a child loop and return the parent's observation.
+async fn run_delegation<'a>(
+    ctx: &'a SolveCtx<'a>,
+    tc: &ToolCall,
+    depth: u32,
+    allowed: bool,
+    owner: String,
+) -> String {
+    let args: serde_json::Value = serde_json::from_str(&tc.arguments).unwrap_or_default();
+    let field = |key: &str| args.get(key).and_then(|v| v.as_str()).unwrap_or("").trim().to_string();
+    let (objective, criteria) = (field("objective"), field("acceptance_criteria"));
+    let name = tc.name.as_str();
+
+    if !allowed {
+        return format!("{name} is not available in this mode.");
+    }
+    if i64::from(depth) >= ctx.config.max_depth {
+        return format!("Max recursion depth reached; cannot run {name}.");
+    }
+    if objective.is_empty() {
+        return format!("{name} requires objective");
+    }
+    if ctx.config.acceptance_criteria && criteria.is_empty() {
+        return format!(
+            "{name} requires acceptance_criteria when acceptance criteria mode is enabled. \
+             Provide specific, verifiable criteria for judging the result."
+        );
     }
 
-    // Budget exhausted
-    tools.cleanup();
-    finish_curators(&mut curator_handles, &mut curator_rx, &mut messages, emitter).await;
-    emitter.emit_error(&format!(
-        "Step budget exhausted after {max_steps} steps. \
-         The model did not produce a final answer within the allowed steps."
-    ));
+    let leaf = name == "execute";
+    let (label, verb) = if leaf {
+        ("Execute", "executing leaf")
+    } else {
+        ("Subtask", "entering subtask")
+    };
+    ctx.emitter.emit_trace(&format!("[d{depth}] >> {verb}: {objective}"));
+
+    let result = match solve_loop(ctx, objective.clone(), depth + 1, owner, leaf).await {
+        Ok(r) => r,
+        Err(e) => return format!("{label} failed for '{objective}': {e}"),
+    };
+    let mut observation = format!("{label} result for '{objective}':\n{result}");
+
+    if ctx.config.acceptance_criteria && !criteria.is_empty() {
+        // ponytail: keyword-overlap judge; Python uses a cheap-model judge — port that if verdicts prove noisy.
+        let verdict = AcceptanceCriteriaJudge::new().evaluate(&criteria, &result);
+        let tag = match verdict.verdict {
+            JudgeVerdict::Pass => "PASS",
+            JudgeVerdict::Partial => "PARTIAL",
+            JudgeVerdict::Fail => "FAIL",
+        };
+        observation.push_str(&format!("\n\n[ACCEPTANCE CRITERIA: {tag}]\n{}", verdict.reasoning));
+    }
+    observation
 }
 
 #[cfg(test)]
