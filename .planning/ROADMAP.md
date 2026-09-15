@@ -74,7 +74,7 @@ Target: one Rust engine served over MCP; DuckDB as the evidence store; graph, wi
 | Phase | Req | Title | Estimate | Status |
 |-------|-----|-------|----------|--------|
 | A1 | R19 | Port subtask/execute recursion into op-core (heuristic judge) | 1–2 days | ✅ done (tests green; runtime-checked vs mock) |
-| A2 | R20 | DuckDB evidence store + `sql` tool; provenance (URL, fetched_at, hash) per row | 1 day | pending |
+| A2 | R20 | DuckDB evidence store + `sql` tool; provenance (URL, fetched_at, hash) per row | 1 day | ✅ done (ingest_file + sql, workspace-confined; runtime-checked vs mock) |
 | A3 | R21 | Claims table → graph + wiki; time slider on dated edges | 2–3 days | pending |
 | A4 | R16 | Entity resolution: hard IDs → Splink on DuckDB → LLM for gray zone | 2–3 days | pending |
 | A5 | R17 | Steer-from-graph subtasks + evidence-locked report (Typst PDF) | 2 days | pending |
