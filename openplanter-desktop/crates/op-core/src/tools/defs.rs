@@ -291,6 +291,45 @@ fn mvp_tool_defs() -> Vec<ToolDef> {
                 "additionalProperties": false
             }),
         },
+        // ── Evidence store ──
+        ToolDef {
+            name: "ingest_file",
+            description: "Load a workspace CSV/TSV, JSON/JSONL or Parquet file into a table in the evidence store (DuckDB). Records provenance (path, source URL, sha256, file modified time, row count) in _sources and tags every row with _source_id. Re-ingesting an identical file is skipped; ingesting a new file into an existing table appends by column name.",
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Workspace path of the file to load."
+                    },
+                    "table": {
+                        "type": "string",
+                        "description": "Target table name (letters, digits, _)."
+                    },
+                    "source_url": {
+                        "type": "string",
+                        "description": "URL the file was fetched from, for provenance."
+                    }
+                },
+                "required": ["path", "table"],
+                "additionalProperties": false
+            }),
+        },
+        ToolDef {
+            name: "sql",
+            description: "Run one DuckDB SQL statement against the evidence store. SELECT/WITH/DESCRIBE/SHOW return up to 200 rows as text; other statements (CREATE TABLE AS, INSERT, UPDATE) return OK. File access is limited to the workspace. Join any table's _source_id to _sources to cite where a row came from.",
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "A single SQL statement."
+                    }
+                },
+                "required": ["query"],
+                "additionalProperties": false
+            }),
+        },
     ]
 }
 

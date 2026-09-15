@@ -8,6 +8,7 @@ pub mod filesystem;
 pub mod shell;
 pub mod web;
 pub mod patching;
+pub mod evidence;
 
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -51,6 +52,9 @@ pub struct WorkspaceTools {
     exa_base_url: String,
     files_read: HashSet<PathBuf>,
     bg_jobs: shell::BgJobs,
+    evidence_path: PathBuf,
+    /// Opened on first ingest_file/sql call.
+    evidence: Option<evidence::EvidenceStore>,
 }
 
 impl WorkspaceTools {
@@ -68,6 +72,11 @@ impl WorkspaceTools {
             exa_base_url: config.exa_base_url.clone(),
             files_read: HashSet::new(),
             bg_jobs: shell::BgJobs::new(),
+            evidence_path: config
+                .workspace
+                .join(&config.session_root_dir)
+                .join("evidence.duckdb"),
+            evidence: None,
         }
     }
 
@@ -212,6 +221,28 @@ impl WorkspaceTools {
                 patching::hashline_edit(&self.root, path, &edits, &mut self.files_read)
             }
 
+            // Evidence store
+            "ingest_file" => {
+                let path = args.get("path").and_then(|v| v.as_str()).unwrap_or("");
+                let table = args.get("table").and_then(|v| v.as_str()).unwrap_or("");
+                let url = args
+                    .get("source_url")
+                    .and_then(|v| v.as_str())
+                    .filter(|u| !u.is_empty());
+                let root = self.root.clone();
+                match self.evidence() {
+                    Ok(store) => store.ingest(&root, path, table, url),
+                    Err(e) => ToolResult::error(e),
+                }
+            }
+            "sql" => {
+                let query = args.get("query").and_then(|v| v.as_str()).unwrap_or("");
+                match self.evidence() {
+                    Ok(store) => store.sql(query),
+                    Err(e) => ToolResult::error(e),
+                }
+            }
+
             // Meta
             "think" => {
                 let note = args.get("note").and_then(|v| v.as_str()).unwrap_or("");
@@ -239,5 +270,15 @@ impl WorkspaceTools {
     /// Clean up background jobs on shutdown.
     pub fn cleanup(&mut self) {
         self.bg_jobs.cleanup();
+    }
+
+    /// The evidence store, opened on first use.
+    fn evidence(&mut self) -> Result<&mut evidence::EvidenceStore, String> {
+        if self.evidence.is_none() {
+            self.evidence = Some(evidence::EvidenceStore::open(&self.root, &self.evidence_path)?);
+        }
+        self.evidence
+            .as_mut()
+            .ok_or_else(|| "evidence store unavailable".to_string())
     }
 }
