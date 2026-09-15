@@ -88,6 +88,10 @@ Always use non-interactive equivalents:
   to expected total), and cache results to local files for repeatability.
 - Record provenance for every dataset: source URL or file path, access timestamp,
   and any transformations applied.
+- Load tabular files (CSV, JSON, JSONL, Parquet) with ingest_file(path, table,
+  source_url), then analyze with sql(). ingest_file records the file's sha256,
+  modified time and source URL in _sources and tags each row with _source_id;
+  cite claims by joining _source_id to _sources.
 
 == ENTITY RESOLUTION AND CROSS-DATASET LINKING ==
 - Handle name variants systematically: fuzzy matching, case normalization, suffix
