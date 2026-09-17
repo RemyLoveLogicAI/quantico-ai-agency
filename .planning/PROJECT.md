@@ -13,37 +13,55 @@ Forked from OpenPlanter. Rebranded to Quantico.
 ## Architecture
 
 ```
-agent/               — Python CLI agent (8,642 lines)
-  __main__.py        — Entry point, CLI arg parsing
-  engine.py          — RLMEngine: recursive LLM execution loop
-  model.py           — Multi-provider model abstraction (OpenAI, Anthropic, OpenRouter, Cerebras, Ollama)
-  tools.py           — WorkspaceTools: file I/O, shell exec, web search, search_files, list_files
-  tool_defs.py       — Tool schema definitions
-  runtime.py         — Agent runtime wrapper
-  prompts.py         — System prompts and templates
-  wiki_graph.py      — NetworkX-based knowledge graph from wiki docs
-  textual_tui.py     — Rich Textual TUI
-  tui.py             — Legacy TUI
-  credentials.py     — API key management
-  patching.py        — File patching via apply_patch
-  builder.py         — Agent builder factory
-  config.py          — AgentConfig dataclass
-  settings.py        — Session settings
-  replay_log.py       — Session replay
+openplanter-desktop/crates/op-core/   — THE engine (FILED.md D3)
+  engine/mod.rs      — recursive solve loop; subtask/execute delegation, curator
+  engine/claims.rs   — write claims guarding concurrent children
+  engine/judge.rs    — acceptance verdicts (keyword overlap; to be replaced, F2)
+  tools/evidence.rs  — DuckDB evidence store: ingest_file + sql, provenance
+  tools/{filesystem,shell,web,patching}.rs — workspace tools
+  model/{openai,anthropic}.rs — providers (OpenAI, Anthropic, OpenRouter, Cerebras, Ollama)
+  wiki/              — markdown wiki → petgraph knowledge graph
+  session/replay.rs  — session persistence and replay
 
-openplanter-desktop/ — Tauri 2 desktop app (Rust + React)
-  crates/op-core/     — Rust core: engine, model, tools, wiki, session
-  crates/op-tauri/    — Tauri bridge: commands, state, IPC
-  frontend/          — React + Cytoscape.js knowledge graph UI
+openplanter-desktop/crates/op-tauri/  — desktop shell: commands, IPC, state
+openplanter-desktop/frontend/         — three-pane UI; Cytoscape.js graph
 
+agent/               — Python CLI agent. Reference implementation + data tooling only;
+                       not the engine (D3). Still the larger test suite.
+scripts/             — 15 Python data fetchers (FEC, SEC EDGAR, USASpending, SAM.gov,
+                       Senate lobbying, OFAC SDN, ICIJ, ProPublica 990, Census, FDIC,
+                       OSHA, EPA ECHO) plus entity_resolution + timing_analysis
+quantico-ai/         — Bun/Hono gateway. Deprecated placeholder; MCP replaces it (F5).
+wiki/                — baseline data-source documentation (15 docs)
 tests/               — 694 Python tests (649 pass, 46 skip, 0 fail)
-scripts/             — Data fetcher scripts (FEC, Census, SEC, etc.)
-wiki/                — Baseline wiki content (15 data source docs)
 ```
+
+## Current capabilities
+
+- **Recursive delegation:** `subtask` and `execute` spawn child agent loops, run
+  concurrently within a turn, and return judged results. Sibling writes to the same
+  file are rejected rather than silently clobbered.
+- **Evidence store:** DuckDB at `<workspace>/.quantico/evidence.duckdb`. `ingest_file`
+  records path, source URL, sha256, modified time and row count in `_sources` and tags
+  every row with `_source_id`; `sql` queries it. File access is confined to the
+  workspace by DuckDB settings, and only one statement runs per call.
+- **Knowledge graph:** wiki markdown parsed into a graph, rendered live in the app.
+- **Sessions:** persisted with replay logs; a background curator keeps the wiki linked.
+
+## Known gaps
+
+1. **Cannot read documents.** Ingestion takes CSV/TSV, JSON/JSONL and Parquet only.
+   Most forensic source material is PDF or scanned. (F1)
+2. **Accuracy is unmeasured.** The acceptance judge is keyword overlap; no gold cases,
+   no benchmark, nothing scores whether a finding is true. (F2)
+3. **No test CI.** `release.yml` is the only workflow; no PR runs cargo/pytest/vitest.
+4. **Not distributable.** No signing, notarization or updater config in tauri.conf.json.
+5. **Never run against a real provider.** Every runtime check used a scripted mock.
+   No token or cost budget exists for recursive runs.
 
 ## Shipped work (from git history)
 
-### v0.1.2 (current)
+### v0.1.2
 - Rebrand from OpenPlanter to Quantico across Python agent + Rust desktop
 - Desktop bundle bumped to 0.1.2
 - CHANGELOG.md added for v0.1.0
@@ -68,13 +86,28 @@ wiki/                — Baseline wiki content (15 data source docs)
 - Installed networkx + numpy (were missing optional deps)
 - Result: 10 failures → 0 failures (649 passed, 46 skipped)
 
+### v0.3 — Rust engine consolidation (Sep 2026) ✅
+- op-core is the single engine (FILED.md D3); Python agent is reference-only
+- Recursive `subtask`/`execute` delegation with write claims (PR #7, #8)
+- DuckDB evidence store: `ingest_file` + `sql` with provenance (PR #9)
+- 191 Rust unit + 20 integration tests passing
+
+### v0.4 — Frontier capabilities (planned)
+- F1: PDF + scanned document ingestion (R21)
+- F2: Evals as product surface — gold cases, rubric judge (R22)
+- F3: Claim graph as substrate (R23)
+- F4: Agentic acquisition for API-less sources (R24)
+- F5: Long-context mode + MCP service (R25)
+
 ## Test inventory
 
-| Suite          | Files | Tests | Status |
-|----------------|-------|-------|--------|
-| Python (tests/) | 40+   | 694   | 649 pass, 46 skip, 0 fail |
-| TypeScript (frontend/) | 15 | 15 | passing |
-| Rust (op-core/) | 1     | 1     | passing |
+| Suite | Tests | Status |
+|-------|-------|--------|
+| Rust op-core (unit) | 191 | passing |
+| Rust op-core (integration) | 20 | passing |
+| Python (tests/) | ~694 | 649 pass, 46 skip |
+| Frontend (vitest) | 15 files | passing |
+| Evals / gold cases | 0 | missing (F2) |
 
 ## Tech stack
 
