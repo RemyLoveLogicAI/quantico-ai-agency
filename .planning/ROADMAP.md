@@ -74,7 +74,7 @@ Target: one Rust engine served over MCP; DuckDB as the evidence store; graph, wi
 | Phase | Req | Title | Estimate | Status |
 |-------|-----|-------|----------|--------|
 | A1 | R19 | Port subtask/execute recursion into op-core (heuristic judge) | 1–2 days | ✅ done (tests green; runtime-checked vs mock) |
-| A2 | R20 | DuckDB evidence store + `sql` tool; provenance (URL, fetched_at, hash) per row | 1 day | pending |
+| A2 | R20 | DuckDB evidence store + `sql` tool; provenance (URL, fetched_at, hash) per row | 1 day | ✅ done (ingest_file + sql, workspace-confined; runtime-checked vs mock) |
 | A3 | R21 | Claims table → graph + wiki; time slider on dated edges | 2–3 days | pending |
 | A4 | R16 | Entity resolution: hard IDs → Splink on DuckDB → LLM for gray zone | 2–3 days | pending |
 | A5 | R17 | Steer-from-graph subtasks + evidence-locked report (Typst PDF) | 2 days | pending |
@@ -87,3 +87,6 @@ Follow-ups for A1:
 - LLM judge instead of the keyword-overlap heuristic.
 - MEDIUM: the shared `WorkspaceTools` mutex is held across `web_search`/`fetch_url` network waits, so a sibling's fast tool call waits for another sibling's HTTP round trip. Release the lock around network I/O.
 - Pre-existing: `run_shell` blocks the async runtime (sync spawn + `thread::sleep`); move it to `spawn_blocking`.
+- `run_shell`/`run_shell_bg` writes aren't covered by write claims (same gap in Python). Needs declared output paths or a sandbox per child. (PR #7: Copilot, Codex)
+- The wiki curator writes through its own `WorkspaceTools`, outside write claims. This predates A1. (PR #7: Sourcery, CodeAnt)
+- `COPY ... TO` inside the `sql` tool writes files without registering a write claim, like shell writes. (PR #9: CodeAnt)
