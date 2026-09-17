@@ -13,18 +13,6 @@ use super::filesystem::resolve_path;
 /// Rows shown per `sql` result before truncating.
 const MAX_ROWS: usize = 200;
 
-/// Leading keywords of statements that return rows.
-const ROW_KEYWORDS: [&str; 8] = [
-    "select",
-    "with",
-    "from",
-    "values",
-    "table",
-    "describe",
-    "show",
-    "summarize",
-];
-
 pub struct EvidenceStore {
     conn: Connection,
 }
@@ -40,6 +28,58 @@ fn is_identifier(s: &str) -> bool {
         .next()
         .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
         && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
+/// True when `sql` holds a single statement.
+///
+/// duckdb-rs offers no safe way to run exactly one statement: `execute` runs every
+/// statement in the string, and `prepare` *executes* all but the last. So a second
+/// statement has to be refused before DuckDB sees it. Semicolons inside string
+/// literals, quoted identifiers, dollar-quotes and comments don't count as separators.
+fn is_single_statement(sql: &str) -> bool {
+    let bytes = sql.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        let rest = &sql[i..];
+        match bytes[i] {
+            b'\'' | b'"' => {
+                let quote = bytes[i];
+                i += 1;
+                while i < bytes.len() {
+                    if bytes[i] == quote {
+                        // A doubled quote is an escape, not the end.
+                        if bytes.get(i + 1) == Some(&quote) {
+                            i += 2;
+                            continue;
+                        }
+                        break;
+                    }
+                    i += 1;
+                }
+            }
+            b'-' if rest.starts_with("--") => {
+                i += sql[i..].find('\n').unwrap_or(sql.len() - i);
+            }
+            b'/' if rest.starts_with("/*") => {
+                i += sql[i + 2..]
+                    .find("*/")
+                    .map(|n| n + 4)
+                    .unwrap_or(sql.len() - i);
+                continue;
+            }
+            b'$' if rest.starts_with("$$") => {
+                i += sql[i + 2..]
+                    .find("$$")
+                    .map(|n| n + 4)
+                    .unwrap_or(sql.len() - i);
+                continue;
+            }
+            b';' => return sql[i + 1..].trim().is_empty(),
+            _ => {}
+        }
+        i += 1;
+    }
+    true
 }
 
 /// DuckDB table function that reads this file type.
@@ -141,7 +181,22 @@ impl EvidenceStore {
             params![table],
             |r| r.get(0),
         )?;
-        let select = format!("SELECT *, {id}::BIGINT AS _source_id FROM {reader}({literal})");
+        // A file with its own _source_id column would otherwise be renamed by DuckDB,
+        // leaving provenance in a column nobody joins on.
+        let carries_source_id = {
+            let mut probe = tx.prepare(&format!("SELECT * FROM {reader}({literal}) LIMIT 0"))?;
+            let probe_rows = probe.query([])?;
+            let columns = probe_rows
+                .as_ref()
+                .map(|s| s.column_names())
+                .unwrap_or_default();
+            columns.iter().any(|c| c == "_source_id")
+        };
+        let select = if carries_source_id {
+            format!("SELECT * REPLACE ({id}::BIGINT AS _source_id) FROM {reader}({literal})")
+        } else {
+            format!("SELECT *, {id}::BIGINT AS _source_id FROM {reader}({literal})")
+        };
         if exists > 0 {
             tx.execute(&format!("INSERT INTO {table} BY NAME {select}"), [])?;
         } else {
@@ -168,21 +223,30 @@ impl EvidenceStore {
         ))
     }
 
-    /// Run one SQL statement. Row-returning statements render as text.
+    /// Run one SQL statement. Statements that return rows render as text.
     pub fn sql(&mut self, query: &str) -> ToolResult {
         let query = query.trim().trim_end_matches(';').trim();
         if query.is_empty() {
             return ToolResult::error("sql requires a query".into());
         }
-        let first = query
-            .split_whitespace()
-            .next()
-            .unwrap_or("")
-            .to_ascii_lowercase();
-        let result = if ROW_KEYWORDS.contains(&first.as_str()) {
-            self.rows(query)
+        if !is_single_statement(query) {
+            return ToolResult::error(
+                "sql runs one statement; send each statement as its own call.".into(),
+            );
+        }
+        // Cast every column to text so any type renders without per-type formatting.
+        // The newlines keep a trailing `-- comment` from swallowing the closing paren.
+        let wrapped = format!(
+            "SELECT COLUMNS(*)::VARCHAR FROM (\n{query}\n) LIMIT {}",
+            MAX_ROWS + 1
+        );
+        // Preparing runs nothing, so it is a safe way to ask DuckDB whether this
+        // statement returns rows — more reliable than guessing from the first keyword.
+        let result = if self.conn.prepare(&wrapped).is_ok() {
+            self.rows(&wrapped)
         } else {
-            self.conn.execute_batch(query).map(|_| "OK".to_string())
+            // execute() runs exactly one statement, so a trailing `; DROP ...` is rejected.
+            self.conn.execute(query, []).map(|_| "OK".to_string())
         };
         match result {
             Ok(text) => ToolResult::ok(text),
@@ -190,12 +254,8 @@ impl EvidenceStore {
         }
     }
 
-    fn rows(&self, query: &str) -> duckdb::Result<String> {
-        // Cast every column to text so any type renders without per-type formatting.
-        let mut stmt = self.conn.prepare(&format!(
-            "SELECT COLUMNS(*)::VARCHAR FROM ({query}) LIMIT {}",
-            MAX_ROWS + 1
-        ))?;
+    fn rows(&self, wrapped: &str) -> duckdb::Result<String> {
+        let mut stmt = self.conn.prepare(wrapped)?;
         let mut rows = stmt.query([])?;
         let names = rows.as_ref().map(|s| s.column_names()).unwrap_or_default();
         let mut lines = vec![names.join(" | ")];
@@ -329,6 +389,46 @@ mod tests {
         assert!(ok(s.sql("DESCRIBE t")).contains("BIGINT"));
         assert!(ok(s.sql("SELECT n FROM t WHERE n < 0")).ends_with("(0 rows)"));
         assert!(s.sql("SELEC 1").is_error);
+    }
+
+    #[test]
+    fn test_only_one_statement_runs() {
+        let (_dir, mut s) = store();
+        let attack = s.sql("CREATE TABLE evil AS SELECT 1; DROP TABLE _sources");
+        assert!(
+            attack.is_error,
+            "second statement must be refused: {attack:?}"
+        );
+        let survived = s.sql("SELECT count(*) FROM _sources");
+        assert!(!survived.is_error, "_sources must survive: {survived:?}");
+        // A trailing semicolon is fine; semicolons inside literals or comments
+        // are not separators.
+        ok(s.sql("SELECT 1;"));
+        assert!(ok(s.sql("SELECT 'a;b' AS s")).ends_with("a;b"));
+        assert!(ok(s.sql("SELECT 1 AS n -- trailing ; comment")).ends_with('1'));
+        assert!(ok(s.sql("SELECT /* mid ; comment */ 2 AS n")).ends_with('2'));
+    }
+
+    #[test]
+    fn test_statement_routing_without_keyword_guessing() {
+        let (_dir, mut s) = store();
+        // A comment before SELECT must still return rows.
+        assert!(ok(s.sql("-- a note\nSELECT 1 AS n")).ends_with('1'));
+        // A data-modifying statement returns OK, not a wrapped-query error.
+        ok(s.sql("CREATE TABLE t AS SELECT 1 AS n"));
+        assert_eq!(ok(s.sql("DELETE FROM t WHERE n = 1")), "OK");
+        assert!(ok(s.sql("SELECT count(*) FROM t")).ends_with('0'));
+    }
+
+    #[test]
+    fn test_input_source_id_column_is_overwritten() {
+        let (dir, mut s) = store();
+        std::fs::write(dir.path().join("a.csv"), "name,_source_id\nACME,999\n").unwrap();
+        ok(s.ingest(dir.path(), "a.csv", "donations", None));
+
+        let rows = ok(s.sql("SELECT name, _source_id FROM donations"));
+        assert!(rows.ends_with("ACME | 1"), "generated id wins: {rows}");
+        assert!(ok(s.sql("SELECT row_count FROM _sources")).ends_with('1'));
     }
 
     #[test]

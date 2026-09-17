@@ -89,3 +89,4 @@ Follow-ups for A1:
 - Pre-existing: `run_shell` blocks the async runtime (sync spawn + `thread::sleep`); move it to `spawn_blocking`.
 - `run_shell`/`run_shell_bg` writes aren't covered by write claims (same gap in Python). Needs declared output paths or a sandbox per child. (PR #7: Copilot, Codex)
 - The wiki curator writes through its own `WorkspaceTools`, outside write claims. This predates A1. (PR #7: Sourcery, CodeAnt)
+- `COPY ... TO` inside the `sql` tool writes files without registering a write claim, like shell writes. (PR #9: CodeAnt)
