@@ -28,6 +28,9 @@ use self::judge::{AcceptanceCriteriaJudge, JudgeVerdict};
 /// Tools that spawn a child loop instead of running in WorkspaceTools.
 const DELEGATION_TOOLS: [&str; 2] = ["subtask", "execute"];
 
+/// Cap on the judge's reasoning appended to a child observation.
+const JUDGE_REASONING_CHARS: usize = 500;
+
 /// Outcome from a background curator task (success or error).
 enum CuratorOutcome {
     Done(CuratorResult),
@@ -557,24 +560,29 @@ async fn run_delegation<'a>(
             JudgeVerdict::Partial => "PARTIAL",
             JudgeVerdict::Fail => "FAIL",
         };
-        observation.push_str(&format!("\n\n[ACCEPTANCE CRITERIA: {tag}]\n{}", verdict.reasoning));
+        observation.push_str(&format!(
+            "\n\n[ACCEPTANCE CRITERIA: {tag}]\n{}",
+            clip(&verdict.reasoning, JUDGE_REASONING_CHARS)
+        ));
     }
     observation
 }
 
-/// Clip child output like tool output, cutting on a char boundary.
+/// Clip child output like tool output, counting characters rather than bytes.
 fn clip(text: &str, max_chars: usize) -> String {
-    if text.len() <= max_chars {
+    let total = text.chars().count();
+    if total <= max_chars {
         return text.to_string();
     }
-    let cut = (0..=max_chars)
-        .rev()
-        .find(|&i| text.is_char_boundary(i))
-        .unwrap_or(0);
+    let cut = text
+        .char_indices()
+        .nth(max_chars)
+        .map(|(i, _)| i)
+        .unwrap_or(text.len());
     format!(
         "{}\n\n...[truncated {} chars]...",
         &text[..cut],
-        text.len() - cut
+        total - max_chars
     )
 }
 
@@ -828,8 +836,8 @@ mod tests {
         assert_eq!(clip("short", 10), "short");
         // "é" is 2 bytes; a cut at byte 3 would split it.
         let clipped = clip("aaé-rest", 3);
-        assert!(clipped.starts_with("aa\n"), "{clipped}");
-        assert!(clipped.contains("truncated 7 chars"), "{clipped}");
+        assert!(clipped.starts_with("aaé\n"), "{clipped}");
+        assert!(clipped.contains("truncated 5 chars"), "{clipped}");
     }
 
     #[test]
