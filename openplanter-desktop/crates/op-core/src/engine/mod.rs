@@ -564,17 +564,18 @@ async fn run_delegation<'a>(
 
 /// Clip child output like tool output, cutting on a char boundary.
 fn clip(text: &str, max_chars: usize) -> String {
-    if text.len() <= max_chars {
+    let char_count = text.chars().count();
+    if char_count <= max_chars {
         return text.to_string();
     }
-    let cut = (0..=max_chars)
-        .rev()
-        .find(|&i| text.is_char_boundary(i))
-        .unwrap_or(0);
+    // Find the byte position that gives us exactly max_chars characters
+    let cut = text.char_indices().nth(max_chars).map(|(i, _)| i).unwrap_or(text.len());
+    let kept_chars = max_chars;
+    let truncated_chars = char_count - kept_chars;
     format!(
         "{}\n\n...[truncated {} chars]...",
         &text[..cut],
-        text.len() - cut
+        truncated_chars
     )
 }
 
@@ -826,10 +827,10 @@ mod tests {
     #[test]
     fn test_clip_cuts_on_char_boundary() {
         assert_eq!(clip("short", 10), "short");
-        // "é" is 2 bytes; a cut at byte 3 would split it.
+        // "aaé-rest" is 8 chars; keeping 3 (aaé) means 5 are truncated.
         let clipped = clip("aaé-rest", 3);
-        assert!(clipped.starts_with("aa\n"), "{clipped}");
-        assert!(clipped.contains("truncated 7 chars"), "{clipped}");
+        assert!(clipped.starts_with("aaé\n"), "{clipped}");
+        assert!(clipped.contains("truncated 5 chars"), "{clipped}");
     }
 
     #[test]
