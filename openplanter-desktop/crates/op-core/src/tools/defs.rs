@@ -304,7 +304,7 @@ fn mvp_tool_defs() -> Vec<ToolDef> {
                     },
                     "table": {
                         "type": "string",
-                        "description": "Target table name (letters, digits, _)."
+                        "description": "Target table name: must start with a letter, followed by letters, digits, or underscores (cannot start with an underscore or digit)."
                     },
                     "source_url": {
                         "type": "string",

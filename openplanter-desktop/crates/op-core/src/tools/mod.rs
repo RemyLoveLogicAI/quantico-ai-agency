@@ -72,10 +72,9 @@ impl WorkspaceTools {
             exa_base_url: config.exa_base_url.clone(),
             files_read: HashSet::new(),
             bg_jobs: shell::BgJobs::new(),
-            evidence_path: config
-                .workspace
-                .join(&config.session_root_dir)
-                .join("evidence.duckdb"),
+            evidence_path: filesystem::resolve_path(&config.workspace, &config.session_root_dir)
+                .map(|p| p.join("evidence.duckdb"))
+                .unwrap_or_else(|_| config.workspace.join(".session").join("evidence.duckdb")),
             evidence: None,
         }
     }

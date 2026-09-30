@@ -37,47 +37,57 @@ fn is_identifier(s: &str) -> bool {
 /// statement has to be refused before DuckDB sees it. Semicolons inside string
 /// literals, quoted identifiers, dollar-quotes and comments don't count as separators.
 fn is_single_statement(sql: &str) -> bool {
-    let bytes = sql.as_bytes();
-    let mut i = 0;
-    while i < bytes.len() {
-        let rest = &sql[i..];
-        match bytes[i] {
-            b'\'' | b'"' => {
-                let quote = bytes[i];
-                i += 1;
-                while i < bytes.len() {
-                    if bytes[i] == quote {
+    let mut chars = sql.char_indices().peekable();
+    while let Some((i, c)) = chars.next() {
+        match c {
+            '\'' | '"' => {
+                let quote = c;
+                while let Some((_, inner)) = chars.next() {
+                    if inner == quote {
                         // A doubled quote is an escape, not the end.
-                        if bytes.get(i + 1) == Some(&quote) {
-                            i += 2;
+                        if chars.peek().map(|&(_, next_c)| next_c) == Some(quote) {
+                            chars.next();
                             continue;
                         }
                         break;
                     }
-                    i += 1;
                 }
             }
-            b'-' if rest.starts_with("--") => {
-                i += sql[i..].find('\n').unwrap_or(sql.len() - i);
+            '-' if sql[i..].starts_with("--") => {
+                while let Some((_, ch)) = chars.next() {
+                    if ch == '\n' {
+                        break;
+                    }
+                }
             }
-            b'/' if rest.starts_with("/*") => {
-                i += sql[i + 2..]
-                    .find("*/")
-                    .map(|n| n + 4)
-                    .unwrap_or(sql.len() - i);
-                continue;
+            '/' if sql[i..].starts_with("/*") => {
+                chars.next(); // consume '*'
+                while let Some((_, ch)) = chars.next() {
+                    if ch == '*' && chars.peek().map(|&(_, next_c)| next_c) == Some('/') {
+                        chars.next(); // consume '/'
+                        break;
+                    }
+                }
             }
-            b'$' if rest.starts_with("$$") => {
-                i += sql[i + 2..]
-                    .find("$$")
-                    .map(|n| n + 4)
-                    .unwrap_or(sql.len() - i);
-                continue;
+            '$' if sql[i..].starts_with("$$") => {
+                chars.next(); // consume second '$'
+                while let Some((_, ch)) = chars.next() {
+                    if ch == '$' && chars.peek().map(|&(_, next_c)| next_c) == Some('$') {
+                        chars.next(); // consume second '$'
+                        break;
+                    }
+                }
             }
-            b';' => return sql[i + 1..].trim().is_empty(),
+            ';' => {
+                for (_, rem_c) in chars {
+                    if !rem_c.is_whitespace() {
+                        return false;
+                    }
+                }
+                return true;
+            }
             _ => {}
         }
-        i += 1;
     }
     true
 }
@@ -268,8 +278,10 @@ impl EvidenceStore {
             }
             let values = (0..names.len())
                 .map(|i| {
-                    row.get::<_, Option<String>>(i)
-                        .map(|v| v.unwrap_or_else(|| "NULL".into()))
+                    row.get::<_, Option<String>>(i).map(|v| {
+                        v.map(|s| s.replace('\r', "").replace('\n', "\\n").replace(" | ", "\\|"))
+                            .unwrap_or_else(|| "NULL".into())
+                    })
                 })
                 .collect::<duckdb::Result<Vec<_>>>()?;
             lines.push(values.join(" | "));
@@ -407,6 +419,7 @@ mod tests {
         assert!(ok(s.sql("SELECT 'a;b' AS s")).ends_with("a;b"));
         assert!(ok(s.sql("SELECT 1 AS n -- trailing ; comment")).ends_with('1'));
         assert!(ok(s.sql("SELECT /* mid ; comment */ 2 AS n")).ends_with('2'));
+        assert!(ok(s.sql("SELECT 'Café' AS s, 1 AS ü -- 測試")).contains("Café"));
     }
 
     #[test]
