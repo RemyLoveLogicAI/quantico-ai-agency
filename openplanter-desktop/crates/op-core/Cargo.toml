@@ -23,6 +23,7 @@ walkdir = "2"
 notify = "7"
 strsim = "0.11"
 crc32fast = "1"
+duckdb = { version = "1.10505.0", features = ["bundled", "json", "parquet"] }
 
 [dev-dependencies]
 tempfile = "3"
