@@ -87,3 +87,5 @@ Follow-ups for A1:
 - LLM judge instead of the keyword-overlap heuristic.
 - MEDIUM: the shared `WorkspaceTools` mutex is held across `web_search`/`fetch_url` network waits, so a sibling's fast tool call waits for another sibling's HTTP round trip. Release the lock around network I/O.
 - Pre-existing: `run_shell` blocks the async runtime (sync spawn + `thread::sleep`); move it to `spawn_blocking`.
+- `run_shell`/`run_shell_bg` writes aren't covered by write claims (same gap in Python). Needs declared output paths or a sandbox per child. (PR #7: Copilot, Codex)
+- The wiki curator writes through its own `WorkspaceTools`, outside write claims. This predates A1. (PR #7: Sourcery, CodeAnt)
