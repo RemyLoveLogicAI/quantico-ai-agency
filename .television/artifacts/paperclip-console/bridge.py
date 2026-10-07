@@ -8,6 +8,7 @@ It never returns secrets: only the fields named in collect() leave this process.
 """
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -23,6 +24,12 @@ TIMEOUT_SEC = 10
 MAX_BODY = 32 * 1024
 STATUSES = {"backlog", "todo", "in_progress", "in_review", "blocked", "done", "cancelled"}
 PRIORITIES = {"low", "medium", "high", "critical"}
+UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+NOISY_ACTIONS = ("environment.", "tool_gateway.", "tool_connection.")
+ACTIVITY_SHOWN = 25
+DESC_MAX = 600
+COMMENT_MAX = 2000
+_name_cache = {}
 
 
 def call(method, path, body=None):
@@ -48,28 +55,69 @@ def pick(obj, keys):
     return {k: obj.get(k) for k in keys}
 
 
+def agent_name(agent_id, known):
+    """Resolve an agent id to a name; terminated agents are fetched once and cached."""
+    if not agent_id:
+        return None
+    if agent_id in known:
+        return known[agent_id]
+    if agent_id not in _name_cache:
+        try:
+            _name_cache[agent_id] = f"{call('GET', f'agents/{agent_id}').get('name', 'unknown')} (former)"
+        except BridgeError:
+            _name_cache[agent_id] = "unknown agent"
+    return _name_cache[agent_id]
+
+
+def summarize_activity(entry, names):
+    details = entry.get("details") or {}
+    return {
+        "action": entry.get("action"),
+        "actor": names.get(entry.get("agentId")) or entry.get("actorType"),
+        "issueId": details.get("issueId") or (entry.get("entityId") if entry.get("entityType") == "issue" else None),
+        "createdAt": entry.get("createdAt"),
+    }
+
+
 def collect():
     c = f"companies/{COMPANY_ID}"
     agents = call("GET", f"{c}/agents")
     names = {a["id"]: a.get("name") for a in agents}
     runs = call("GET", f"{c}/heartbeat-runs?limit=15")
+    dashboard = call("GET", f"{c}/dashboard")
     try:
         approvals = call("GET", f"{c}/approvals?status=pending")
     except BridgeError:
         approvals = []
+    activity = [e for e in call("GET", f"{c}/activity?limit=80")
+                if not str(e.get("action", "")).startswith(NOISY_ACTIONS)][:ACTIVITY_SHOWN]
+    issues = call("GET", f"{c}/issues?limit=100")
     return {
         "online": True,
         "company": pick(call("GET", c), ["name", "issuePrefix", "status"]),
-        "dashboard": call("GET", f"{c}/dashboard"),
-        "agents": [pick(a, ["id", "name", "role", "adapterType", "status", "lastHeartbeatAt"])
-                   for a in agents],
-        "issues": [{**pick(i, ["id", "identifier", "title", "status", "priority", "updatedAt"]),
-                    "assignee": names.get(i.get("assigneeAgentId"))}
-                   for i in call("GET", f"{c}/issues?limit=50")],
+        "dashboard": pick(dashboard, ["agents", "tasks", "costs", "pendingApprovals"]),
+        "runChart": [pick(d, ["date", "succeeded", "failed", "other"]) for d in dashboard.get("runActivity", [])],
+        "agents": [pick(a, ["id", "name", "role", "title", "adapterType", "status", "reportsTo",
+                            "lastHeartbeatAt", "errorReason", "pauseReason",
+                            "spentMonthlyCents", "budgetMonthlyCents"]) for a in agents],
+        "issues": [{**pick(i, ["id", "identifier", "title", "status", "priority", "updatedAt",
+                               "assigneeAgentId", "parentId"]),
+                    "description": (i.get("description") or "")[:DESC_MAX],
+                    "assignee": agent_name(i.get("assigneeAgentId"), names)} for i in issues],
         "approvals": [pick(a, ["id", "type", "status", "createdAt"]) for a in approvals],
+        "activity": [summarize_activity(e, names) for e in activity],
         "runs": [{**pick(r, ["status", "startedAt", "finishedAt", "error"]),
                   "agent": names.get(r.get("agentId"), "unknown")} for r in runs],
     }
+
+
+def comments_for(issue_id, names=None):
+    if not UUID_RE.match(issue_id or ""):
+        raise BridgeError("bad issue id")
+    known = {a["id"]: a.get("name") for a in call("GET", f"companies/{COMPANY_ID}/agents")}
+    return [{"author": agent_name(c.get("authorAgentId"), known) if c.get("authorAgentId") else "you",
+             "body": (c.get("body") or "")[:COMMENT_MAX], "createdAt": c.get("createdAt")}
+            for c in call("GET", f"issues/{issue_id}/comments")]
 
 
 def need(args, key, kind=str, limit=4000):
@@ -96,6 +144,11 @@ def act(args):
         if args.get("status") not in STATUSES:
             raise BridgeError("unknown status")
         return call("PATCH", f"issues/{need(args, 'id', limit=64)}", {"status": args["status"]})
+    if action == "issue.assign":
+        target = args.get("assigneeAgentId") or None
+        if target is not None and not UUID_RE.match(str(target)):
+            raise BridgeError("bad agent id")
+        return call("PATCH", f"issues/{need(args, 'id', limit=64)}", {"assigneeAgentId": target})
     if action == "issue.comment":
         return call("POST", f"issues/{need(args, 'id', limit=64)}/comments",
                     {"body": need(args, "body", limit=8000)})
@@ -142,9 +195,13 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        if not self._origin_ok() or self.path != "/state":
-            return self._send(403 if not self._origin_ok() else 404, {"error": "not allowed"})
+        if not self._origin_ok():
+            return self._send(403, {"error": "not allowed"})
         try:
+            if self.path.startswith("/comments?id="):
+                return self._send(200, {"comments": comments_for(self.path.split("=", 1)[1])})
+            if self.path != "/state":
+                return self._send(404, {"error": "not found"})
             self._send(200, collect())
         except BridgeError as exc:
             self._send(200, {"online": False, "error": str(exc)})

@@ -11,27 +11,45 @@
 <body>
   <header>
     <div><h1 id="title">Paperclip Console</h1><p id="subtitle">Connecting…</p></div>
-    <span id="live" class="pill idle"><span id="live-text">Connecting</span></span>
+    <div class="line"><button id="new-open" type="button">+ New task</button>
+      <span id="live" class="pill idle"><span id="live-text">Connecting</span></span></div>
   </header>
   <p id="toast" class="toast" hidden></p>
+  <div id="kpis" class="kpis"></div>
   <main>
-    <section id="agents"><h2>Agents</h2><div id="agents-body"></div></section>
-    <section id="new"><h2>New task</h2>
-      <form id="new-form">
-        <label for="n-title">Title</label><input id="n-title" required maxlength="300">
-        <label for="n-desc">Details</label><textarea id="n-desc" rows="3"></textarea>
-        <div class="row">
-          <div><label for="n-agent">Assign to</label><select id="n-agent"></select></div>
-          <div><label for="n-prio">Priority</label>
-            <select id="n-prio"><option>low</option><option selected>medium</option><option>high</option><option>critical</option></select></div>
-        </div>
-        <button type="submit">Create task</button>
-      </form>
-    </section>
+    <section id="org"><h2>Org</h2><div id="org-body"></div></section>
+    <section id="chart"><h2>Runs, last 14 days</h2><div id="chart-body"></div><p id="chart-legend" class="muted"></p></section>
     <section id="approvals" hidden><h2>Pending approvals</h2><div id="approvals-body"></div></section>
-    <section id="tasks"><h2>Tasks</h2><div id="tasks-body"></div></section>
+    <section id="board" class="wide"><h2>Board</h2><p class="muted">Drag a card to change its status, or click it for details.</p><div id="board-body" class="boardgrid"></div></section>
+    <section id="activity"><h2>Activity</h2><div id="activity-body"></div></section>
     <section id="runs"><h2>Recent runs</h2><div id="runs-body"></div></section>
   </main>
+
+  <dialog id="new-dialog"><div class="dialog-content">
+    <form id="new-form">
+      <h2>New task</h2>
+      <label for="n-title">Title</label><input id="n-title" required maxlength="300">
+      <label for="n-desc">Details</label><textarea id="n-desc" rows="4"></textarea>
+      <div class="row">
+        <div><label for="n-agent">Assign to</label><select id="n-agent"></select></div>
+        <div><label for="n-prio">Priority</label>
+          <select id="n-prio"><option>low</option><option selected>medium</option><option>high</option><option>critical</option></select></div>
+      </div>
+      <div class="line"><button type="submit">Create task</button><button id="new-cancel" type="button">Cancel</button></div>
+    </form>
+  </div></dialog>
+
+  <dialog id="detail"><div class="dialog-content">
+    <div class="line"><h2 id="d-title" class="grow"></h2><button id="d-close" type="button">Close</button></div>
+    <p id="d-desc" class="desc"></p>
+    <div class="row">
+      <div><label for="d-assignee">Assignee</label><select id="d-assignee"></select></div>
+      <div><label for="d-status">Status</label><select id="d-status"></select></div>
+    </div>
+    <h3>Comments</h3>
+    <div id="d-comments"></div>
+    <div class="comment"><input id="d-note" placeholder="Add a comment…" aria-label="Add a comment"><button id="d-send" type="button">Send</button></div>
+  </div></dialog>
   <script type="module" src="./console.js"></script>
 </body>
 </html>
