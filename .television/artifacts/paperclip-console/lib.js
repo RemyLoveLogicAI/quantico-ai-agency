@@ -9,6 +9,7 @@ const PILL = { idle: "idle", running: "ok", active: "ok", succeeded: "ok", done:
 
 export const $ = (id) => document.getElementById(id);
 export const label = (s) => String(s ?? "").replace(/[._]/g, " ");
+export const cap = (s) => label(s).replace(/^./, (c) => c.toUpperCase());
 
 export function el(tag, props = {}, ...children) {
   const node = document.createElement(tag);
@@ -70,6 +71,51 @@ export async function act(payload, okMessage, afterOk) {
     return true;
   } catch (err) {
     toast(`Failed: ${err.message}`, true);
+    return false;
+  }
+}
+
+// Fill a <tv-select> with options ([{value, label}]) and select `value` (falls back to the first option).
+// Programmatic selection does not emit "change", so callers never see a write from this.
+export function setSelect(select, options, value) {
+  const wanted = options.some((o) => o.value === value) ? value : options[0]?.value;
+  select.replaceChildren(...options.map((o) => {
+    const node = el("tv-option", { value: o.value }, o.label);
+    if (o.value === wanted) node.setAttribute("selected", "");
+    return node;
+  }));
+  if (wanted !== undefined) select.value = wanted;
+}
+
+// Saved-view storage. localStorage throws inside sandboxed artifact frames, so every
+// access is guarded; `mode` tells the UI which kind of persistence it actually got.
+export const prefs = {
+  mode: "memory",
+  load(key, fallback) {
+    try {
+      const raw = window.localStorage.getItem(key);
+      this.mode = "browser";
+      return raw ? JSON.parse(raw) : fallback;
+    } catch {
+      this.mode = "memory";
+      return fallback;
+    }
+  },
+  save(key, value) {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+      this.mode = "browser";
+    } catch {
+      this.mode = "memory";
+    }
+  },
+};
+
+export async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
     return false;
   }
 }

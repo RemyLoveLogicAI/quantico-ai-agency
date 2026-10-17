@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Paperclip Console</title>
-<link rel="stylesheet" href="/canonical/v2/styles.css?authoredForAppVersion=1.4.23">
+<link rel="stylesheet" href="/canonical/v2/styles.css?authoredForAppVersion=1.5.2">
 <script type="module" src="/canonical/v2/components.js"></script>
 <link rel="stylesheet" href="./console.css">
 </head>
 <body>
   <header>
     <div><h1 id="title">Paperclip Console</h1><p id="subtitle">Connecting…</p></div>
-    <div class="line"><button id="new-open" type="button">+ New task</button>
+    <div class="line"><button id="console-refresh" type="button">Refresh</button><button id="new-open" type="button">+ New task</button>
       <span id="live" class="pill idle"><span id="live-text">Connecting</span></span></div>
   </header>
   <p id="toast" class="toast" hidden></p>
@@ -20,7 +20,15 @@
     <section id="org"><h2>Org</h2><div id="org-body"></div></section>
     <section id="chart"><h2>Runs, last 14 days</h2><div id="chart-body"></div><p id="chart-legend" class="muted"></p></section>
     <section id="approvals" hidden><h2>Pending approvals</h2><div id="approvals-body"></div></section>
-    <section id="board" class="wide"><h2>Board</h2><p class="muted">Drag a card to change its status, or click it for details.</p><div id="board-body" class="boardgrid"></div></section>
+    <section id="board" class="wide"><h2>Board</h2><p class="muted">Drag a card to change its status, or click it for details.</p><div class="line" id="board-filters" style="flex-wrap:wrap;margin-bottom:16px">
+<label>Search tasks<input id="board-search" type="search" placeholder="Identifier, title, description"></label>
+<label>Status<select id="board-status"><option value="">All statuses</option></select></label>
+<label>Priority<select id="board-priority"><option value="">All priorities</option><option>critical</option><option>high</option><option>medium</option><option>low</option></select></label>
+<label>Assignee<select id="board-assignee"><option value="">All assignees</option><option value="unassigned">Unassigned</option></select></label>
+<button type="button" id="board-clear">Clear filters</button>
+<label>Saved view<input id="board-view-name" maxlength="80" placeholder="Name this view"></label><button type="button" id="board-save-view" disabled>Save view</button>
+<label>Load view<select id="board-load-view"><option value="">Choose a saved view</option></select></label>
+<p id="board-result-count" role="status"></p><p id="board-view-status" role="status">Connecting saved views…</p></div><div id="board-body" class="boardgrid"></div></section>
     <section id="activity"><h2>Activity</h2><div id="activity-body"></div></section>
     <section id="runs"><h2>Recent runs</h2><div id="runs-body"></div></section>
   </main>

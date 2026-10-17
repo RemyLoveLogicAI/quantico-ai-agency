@@ -1,0 +1,14 @@
+{
+  "memories": [],
+  "manual_memories": [],
+  "realtime_memories": [
+    {
+      "type": "message",
+      "content": "You name terminal workspace tabs for a developer running coding agents. Given a conversation excerpt, output ONLY a short title: 2-5 words, in the same language as the conversation, no quotes, no trai",
+      "added_at": "2026-10-06T11:34:56.911969",
+      "source": "realtime_capture"
+    }
+  ],
+  "created_at": "2026-10-06T11:34:56.911944",
+  "updated_at": "2026-10-06T11:34:56.911971"
+}

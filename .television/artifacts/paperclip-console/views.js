@@ -1,8 +1,8 @@
 // Render functions for each console panel. Pure DOM; actions go through lib.act.
-import { $, el, pill, label, ago, money, button, act } from "./lib.js";
+import { $, el, pill, label, ago, money, button, act, toast, copyText } from "./lib.js";
 
 export const STATUSES = ["backlog", "todo", "in_progress", "in_review", "blocked", "done", "cancelled"];
-const BOARD_COLUMNS = ["backlog", "todo", "in_progress", "in_review", "blocked", "done"];
+export const BOARD_COLUMNS = ["backlog", "todo", "in_progress", "in_review", "blocked", "done"];
 const DONE_CARDS_SHOWN = 5;
 
 export function renderKpis(d) {
@@ -32,25 +32,22 @@ function agentCard(a, reload) {
         : button("Pause", () => act({ action: "agent.pause", id: a.id }, `Paused ${a.name}`, reload))));
 }
 
-export function renderOrg(agents, reload) {
+export function renderOrg(agents, reload, visibleIds = null) {
   const ids = new Set(agents.map((a) => a.id));
   const children = new Map();
   for (const a of agents) {
     const parent = ids.has(a.reportsTo) ? a.reportsTo : null;
     children.set(parent, [...(children.get(parent) || []), a]);
   }
+  // With a filter active, keep a node when it matches or any descendant does (the tree stays connected).
+  const keep = (a) => !visibleIds || visibleIds.has(a.id) || (children.get(a.id) || []).some(keep);
   const branch = (parent) => {
-    const kids = children.get(parent) || [];
+    const kids = (children.get(parent) || []).filter(keep);
     if (!kids.length) return null;
     return el("ul", { class: "tree" }, ...kids.map((a) => el("li", {}, agentCard(a, reload), branch(a.id))));
   };
-  $("org-body").replaceChildren(branch(null) || el("p", { class: "muted" }, "No agents."));
-
-  const select = $("n-agent");
-  const keep = select.value;
-  select.replaceChildren(el("option", { value: "" }, "Unassigned"),
-    ...agents.map((a) => el("option", { value: a.id }, a.name)));
-  select.value = keep;
+  $("org-body").replaceChildren(branch(null)
+    || el("p", { class: "muted" }, visibleIds ? "No agents match the current filters." : "No agents."));
 }
 
 export function renderChart(chart) {
@@ -67,20 +64,46 @@ export function renderChart(chart) {
   $("chart-legend").textContent = `14 days: ${sum("succeeded")} succeeded · ${sum("failed")} failed · ${sum("other")} other`;
 }
 
-export function renderBoard(issues, openTask, reload) {
-  const columns = BOARD_COLUMNS.map((status) => {
+const cardActions = (i, openTask, reload) => {
+  const move = (status) => act({ action: "issue.status", id: i.id, status }, `${i.identifier} → ${label(status)}`, reload);
+  const item = (text, onClick, props = {}) => {
+    const node = el("tv-menu-item", props, text);
+    node.addEventListener("click", onClick);
+    return node;
+  };
+  return [
+    item("Open details", () => openTask(i)),
+    el("hr"),
+    ...STATUSES.filter((s) => s !== i.status).map((s) => item(`Move to ${label(s)}`, () => move(s))),
+    el("hr"),
+    item("Copy identifier", async () => toast((await copyText(i.identifier)) ? `Copied ${i.identifier}` : "Clipboard unavailable here", false)),
+  ];
+};
+
+function taskCard(i, openTask, reload) {
+  const menuId = `card-menu-${i.id}`;
+  const open = el("button", { type: "button", class: "task" },
+    el("span", { class: "muted" }, i.identifier), el("span", { class: "ttl" }, i.title),
+    el("span", { class: "muted" }, `${i.priority || "—"} · ${i.assignee || "unassigned"}`));
+  open.addEventListener("click", () => openTask(i));
+  const more = el("button", { type: "button", id: menuId, class: "card-more", "aria-label": `Actions for ${i.identifier}` },
+    el("tv-icon", { name: "more" }));
+  const card = el("div", { class: "task-card", draggable: "true" }, open, more,
+    el("tv-menu", { trigger: menuId }, ...cardActions(i, openTask, reload)));
+  card.addEventListener("dragstart", (e) => e.dataTransfer.setData("text/plain", i.id));
+  return card;
+}
+
+// issues: already-filtered list; totals: Map status -> unfiltered count; filtered: whether a filter is active.
+export function renderBoard(issues, openTask, reload, { columns = BOARD_COLUMNS, totals, filtered = false } = {}) {
+  const cols = columns.map((status) => {
     const all = issues.filter((i) => i.status === status);
-    const shown = status === "done" ? all.slice(0, DONE_CARDS_SHOWN) : all;
+    const shown = status === "done" && !filtered ? all.slice(0, DONE_CARDS_SHOWN) : all;
+    const total = totals?.get(status) ?? all.length;
     const col = el("div", { class: "col", "data-status": status },
-      el("h3", {}, label(status), el("span", { class: "count" }, all.length)),
-      ...shown.map((i) => {
-        const card = el("button", { type: "button", class: "task", draggable: "true" },
-          el("span", { class: "muted" }, i.identifier), el("span", { class: "ttl" }, i.title),
-          el("span", { class: "muted" }, `${i.priority || "—"} · ${i.assignee || "unassigned"}`));
-        card.addEventListener("click", () => openTask(i));
-        card.addEventListener("dragstart", (e) => e.dataTransfer.setData("text/plain", i.id));
-        return card;
-      }),
+      el("h3", {}, label(status), el("span", { class: "count" }, filtered ? `${all.length} of ${total}` : all.length)),
+      ...shown.map((i) => taskCard(i, openTask, reload)),
+      !all.length ? el("p", { class: "muted" }, filtered ? "No matches" : "Nothing here") : null,
       all.length > shown.length ? el("p", { class: "muted" }, `+${all.length - shown.length} more done`) : null);
     col.addEventListener("dragover", (e) => { e.preventDefault(); col.classList.add("over"); });
     col.addEventListener("dragleave", () => col.classList.remove("over"));
@@ -94,7 +117,7 @@ export function renderBoard(issues, openTask, reload) {
     });
     return col;
   });
-  $("board-body").replaceChildren(...columns);
+  $("board-body").replaceChildren(...cols);
 }
 
 export function renderApprovals(list, reload) {
