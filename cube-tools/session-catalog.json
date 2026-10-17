@@ -1,0 +1,611 @@
+{
+  "captured_at": "2026-09-25T02:09:27.338Z",
+  "providers": [
+    {
+      "name": "browser_use",
+      "tools": [
+        "browser_task",
+        "execute_skill",
+        "get_cookies",
+        "list_browser_profiles",
+        "list_skills",
+        "monitor_task"
+      ]
+    },
+    {
+      "name": "cloudflare_docs",
+      "tools": [
+        "migrate_pages_to_workers_guide",
+        "search_cloudflare_documentation"
+      ]
+    },
+    {
+      "name": "codegraph",
+      "tools": [
+        "codegraph_explore"
+      ]
+    },
+    {
+      "name": "codescene",
+      "tools": [
+        "analyze_change_set",
+        "code_health_refactoring_business_case",
+        "code_health_review",
+        "code_health_score",
+        "code_ownership_for_path",
+        "download_skill",
+        "explain_code_health",
+        "explain_code_health_productivity",
+        "get_config",
+        "get_skill_manifest",
+        "list_skills",
+        "list_technical_debt_goals_for_project",
+        "list_technical_debt_goals_for_project_file",
+        "list_technical_debt_hotspots_for_project",
+        "list_technical_debt_hotspots_for_project_file",
+        "login",
+        "logout",
+        "pre_commit_code_health_safeguard",
+        "rules_config_list_thresholds",
+        "rules_config_set_rule",
+        "rules_config_set_threshold",
+        "rules_config_validate",
+        "select_project",
+        "set_config",
+        "show_mcp_usage_overview",
+        "switch_account",
+        "sync_skills",
+        "verify_installation"
+      ]
+    },
+    {
+      "name": "confluence",
+      "tools": [
+        "confluence_add_anchor_block_to_section",
+        "confluence_commit_pending_page_update",
+        "confluence_configure_connection",
+        "confluence_create_page",
+        "confluence_discard_pending_page_update",
+        "confluence_execute_cql_search",
+        "confluence_get_connection_status",
+        "confluence_get_current_user",
+        "confluence_get_page",
+        "confluence_get_page_anchor_block",
+        "confluence_get_page_outline",
+        "confluence_get_page_section",
+        "confluence_get_pending_page_update",
+        "confluence_list_pending_page_updates",
+        "confluence_preview_page_anchor_block_update",
+        "confluence_preview_page_section_update",
+        "confluence_search_pages",
+        "confluence_stage_page_anchor_block_update",
+        "confluence_stage_page_section_update",
+        "confluence_stage_page_update",
+        "confluence_update_page",
+        "confluence_update_page_anchor_block_confirmed",
+        "confluence_update_page_section",
+        "confluence_update_page_section_confirmed",
+        "confluence_upload_attachment"
+      ]
+    },
+    {
+      "name": "context7",
+      "tools": [
+        "query_docs",
+        "resolve_library_id"
+      ]
+    },
+    {
+      "name": "creative_production_mcp",
+      "tools": [
+        "creative_production_board"
+      ]
+    },
+    {
+      "name": "exa",
+      "tools": [
+        "web_fetch_exa",
+        "web_search_exa"
+      ]
+    },
+    {
+      "name": "exa_web_search",
+      "tools": [
+        "web_fetch_exa",
+        "web_search_exa"
+      ]
+    },
+    {
+      "name": "fal_ai",
+      "tools": [
+        "analytics",
+        "cancel",
+        "estimate_cost",
+        "find",
+        "generate",
+        "models",
+        "pricing",
+        "result",
+        "search",
+        "status",
+        "upload",
+        "usage"
+      ]
+    },
+    {
+      "name": "firecrawl",
+      "tools": [
+        "firecrawl_agent",
+        "firecrawl_agent_status",
+        "firecrawl_check_crawl_status",
+        "firecrawl_crawl",
+        "firecrawl_credit_usage",
+        "firecrawl_developer_search",
+        "firecrawl_extract",
+        "firecrawl_feedback",
+        "firecrawl_find_tools",
+        "firecrawl_interact",
+        "firecrawl_interact_stop",
+        "firecrawl_map",
+        "firecrawl_monitor_check",
+        "firecrawl_monitor_checks",
+        "firecrawl_monitor_create",
+        "firecrawl_monitor_delete",
+        "firecrawl_monitor_get",
+        "firecrawl_monitor_list",
+        "firecrawl_monitor_run",
+        "firecrawl_monitor_update",
+        "firecrawl_parse",
+        "firecrawl_research_inspect_paper",
+        "firecrawl_research_read_paper",
+        "firecrawl_research_related_papers",
+        "firecrawl_research_search_github",
+        "firecrawl_research_search_papers",
+        "firecrawl_scrape",
+        "firecrawl_search",
+        "firecrawl_search_feedback"
+      ]
+    },
+    {
+      "name": "gemini_notebook_mcp",
+      "tools": [
+        "batch",
+        "chat_configure",
+        "chat_export",
+        "chat_get",
+        "chat_list",
+        "collection_create",
+        "collection_delete",
+        "collection_edit",
+        "collection_list",
+        "collection_set_emoji",
+        "cross_notebook_query",
+        "download_all_artifacts",
+        "download_artifact",
+        "export_artifact",
+        "label",
+        "note",
+        "notebook_create",
+        "notebook_delete",
+        "notebook_describe",
+        "notebook_get",
+        "notebook_list",
+        "notebook_query",
+        "notebook_query_start",
+        "notebook_query_status",
+        "notebook_rename",
+        "notebook_share_batch",
+        "notebook_share_invite",
+        "notebook_share_public",
+        "notebook_share_status",
+        "pipeline",
+        "refresh_auth",
+        "research_import",
+        "research_start",
+        "research_status",
+        "save_auth_tokens",
+        "server_info",
+        "source_add",
+        "source_delete",
+        "source_describe",
+        "source_get_content",
+        "source_list_drive",
+        "source_rename",
+        "source_sync_drive",
+        "studio_create",
+        "studio_delete",
+        "studio_revise",
+        "studio_status",
+        "tag"
+      ]
+    },
+    {
+      "name": "github",
+      "tools": [
+        "add_issue_comment",
+        "create_branch",
+        "create_issue",
+        "create_or_update_file",
+        "create_pull_request",
+        "create_pull_request_review",
+        "create_repository",
+        "fork_repository",
+        "get_file_contents",
+        "get_issue",
+        "get_pull_request",
+        "get_pull_request_comments",
+        "get_pull_request_files",
+        "get_pull_request_reviews",
+        "get_pull_request_status",
+        "list_commits",
+        "list_issues",
+        "list_pull_requests",
+        "merge_pull_request",
+        "push_files",
+        "search_code",
+        "search_issues",
+        "search_repositories",
+        "search_users",
+        "update_issue",
+        "update_pull_request_branch"
+      ]
+    },
+    {
+      "name": "grep_app",
+      "tools": [
+        "searchGitHub"
+      ]
+    },
+    {
+      "name": "hugging_face",
+      "tools": [
+        "hf_fs",
+        "hf_whoami",
+        "hub_repo_details",
+        "hub_repo_search"
+      ]
+    },
+    {
+      "name": "kimi_cu",
+      "tools": [
+        "click",
+        "drag",
+        "get_app_state",
+        "list_apps",
+        "perform_secondary_action",
+        "press_key",
+        "scroll",
+        "select_text",
+        "set_value",
+        "type_text"
+      ]
+    },
+    {
+      "name": "laraplugins",
+      "tools": [
+        "get_curated_tool_recommendations",
+        "get_plugin_details_tool",
+        "search_plugin_semantic_tool",
+        "search_plugin_tool"
+      ]
+    },
+    {
+      "name": "leaf",
+      "tools": [
+        "leaf_present",
+        "leaf_present_snapshot"
+      ]
+    },
+    {
+      "name": "lsp",
+      "tools": [
+        "diagnostics",
+        "find_references",
+        "goto_definition",
+        "install_decision",
+        "prepare_rename",
+        "rename",
+        "status",
+        "symbols"
+      ]
+    },
+    {
+      "name": "magic",
+      "tools": [
+        "getRegistryItem",
+        "listRegistryItems",
+        "searchRegistryItems"
+      ]
+    },
+    {
+      "name": "mem0",
+      "tools": [
+        "add_memory",
+        "delete_all_memories",
+        "delete_entities",
+        "delete_memory",
+        "get_event_status",
+        "get_memories",
+        "get_memory",
+        "list_entities",
+        "list_events",
+        "search_memories",
+        "update_memory"
+      ]
+    },
+    {
+      "name": "mem",
+      "tools": [
+        "add_note_to_collection",
+        "answer_question_about_attachment",
+        "create_collection",
+        "create_note",
+        "delete_collection",
+        "extended_search_notes",
+        "find_related_notes",
+        "get_audio_recording",
+        "get_collection",
+        "get_note",
+        "get_note_attachment_download_url",
+        "list_collections",
+        "list_notes",
+        "message_mem_agent",
+        "move_note",
+        "read_attachment",
+        "remove_note_from_collection",
+        "restore_note",
+        "search_collections",
+        "search_notes",
+        "set_note_created_at",
+        "trash_note",
+        "update_collection",
+        "update_note"
+      ]
+    },
+    {
+      "name": "memory",
+      "tools": [
+        "add_observations",
+        "create_entities",
+        "create_relations",
+        "delete_entities",
+        "delete_observations",
+        "delete_relations",
+        "open_nodes",
+        "read_graph",
+        "search_nodes"
+      ]
+    },
+    {
+      "name": "memxus",
+      "tools": [
+        "forget",
+        "get_context",
+        "get_memory",
+        "list_collections",
+        "list_memories",
+        "memory_stats",
+        "recall",
+        "remember",
+        "update"
+      ]
+    },
+    {
+      "name": "node_repl",
+      "tools": [
+        "js",
+        "js_add_node_module_dir",
+        "js_reset"
+      ]
+    },
+    {
+      "name": "openai_api_key_local_confirmation",
+      "tools": [
+        "confirm_openai_api_key_local_destination"
+      ]
+    },
+    {
+      "name": "parallel_search",
+      "tools": [
+        "web_fetch",
+        "web_search"
+      ]
+    },
+    {
+      "name": "playwright",
+      "tools": [
+        "browser_click",
+        "browser_close",
+        "browser_console_messages",
+        "browser_drag",
+        "browser_drop",
+        "browser_emulate_media",
+        "browser_evaluate",
+        "browser_file_upload",
+        "browser_fill_form",
+        "browser_find",
+        "browser_handle_dialog",
+        "browser_hover",
+        "browser_navigate",
+        "browser_navigate_back",
+        "browser_network_request",
+        "browser_network_requests",
+        "browser_press_key",
+        "browser_resize",
+        "browser_run_code_unsafe",
+        "browser_select_option",
+        "browser_snapshot",
+        "browser_tabs",
+        "browser_take_screenshot",
+        "browser_type",
+        "browser_wait_for"
+      ]
+    },
+    {
+      "name": "sequential_thinking",
+      "tools": [
+        "sequentialthinking"
+      ]
+    },
+    {
+      "name": "supermemory",
+      "tools": [
+        "add_memory",
+        "get_document",
+        "get_profile",
+        "guided_save",
+        "list_documents",
+        "list_memories",
+        "list_spaces",
+        "memory_graph",
+        "search_memory",
+        "select_space",
+        "upload_file",
+        "who_am_i"
+      ]
+    },
+    {
+      "name": "token_optimizer",
+      "tools": [
+        "alert_manager",
+        "analyze_optimization",
+        "analyze_project_tokens",
+        "cache_analytics",
+        "cache_benchmark",
+        "cache_compression",
+        "cache_invalidation",
+        "cache_optimizer",
+        "cache_partition",
+        "cache_replication",
+        "cache_warmup",
+        "clear_cache",
+        "compress_text",
+        "count_tokens",
+        "custom_widget",
+        "data_visualizer",
+        "decompress_text",
+        "get_cache_stats",
+        "get_cached",
+        "get_session_stats",
+        "health_monitor",
+        "intelligent_assistant",
+        "log_dashboard",
+        "metric_collector",
+        "monitoring_integration",
+        "natural_language_query",
+        "optimize_session",
+        "optimize_text",
+        "pattern_recognition",
+        "predictive_analytics",
+        "predictive_cache",
+        "recommendation_engine",
+        "smart_api_fetch",
+        "smart_ast_grep",
+        "smart_branch",
+        "smart_build",
+        "smart_cache",
+        "smart_cache_api",
+        "smart_cron",
+        "smart_database",
+        "smart_diff",
+        "smart_docker",
+        "smart_edit",
+        "smart_glob",
+        "smart_graphql",
+        "smart_grep",
+        "smart_install",
+        "smart_lint",
+        "smart_log",
+        "smart_logs",
+        "smart_merge",
+        "smart_migration",
+        "smart_network",
+        "smart_orm",
+        "smart_processes",
+        "smart_read",
+        "smart_rest",
+        "smart_schema",
+        "smart_sql",
+        "smart_status",
+        "smart_summarization",
+        "smart_system_metrics",
+        "smart_test",
+        "smart_typecheck",
+        "smart_user",
+        "smart_websocket",
+        "smart_write"
+      ]
+    },
+    {
+      "name": "vercel",
+      "tools": [
+        "add_toolbar_reaction",
+        "buy_addon",
+        "buy_credits",
+        "buy_domain",
+        "buy_pro",
+        "change_toolbar_thread_resolve_status",
+        "check_domain_availability_and_price",
+        "deploy_to_vercel",
+        "edit_toolbar_message",
+        "get_access_to_vercel_url",
+        "get_agent_run",
+        "get_agent_run_trace",
+        "get_bulk_availability",
+        "get_bulk_price",
+        "get_contact_info_schema",
+        "get_deployment",
+        "get_deployment_build_logs",
+        "get_domain_availability",
+        "get_domain_order",
+        "get_domain_price",
+        "get_git_deployment_context",
+        "get_project",
+        "get_project_deployment_protection",
+        "get_purchase_quote",
+        "get_runtime_errors",
+        "get_runtime_logs",
+        "get_tld",
+        "get_tld_price",
+        "get_toolbar_thread",
+        "get_web_analytics",
+        "import_claude_design_from_url",
+        "list_agent_run_projects",
+        "list_agent_runs",
+        "list_deployments",
+        "list_projects",
+        "list_supported_tlds",
+        "list_teams",
+        "list_toolbar_threads",
+        "pause_project",
+        "reply_to_toolbar_thread",
+        "search_domains",
+        "search_vercel_documentation",
+        "unpause_project",
+        "update_project_deployment_protection",
+        "use_vercel_cli",
+        "web_fetch_vercel_url"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "name": "lsp",
+      "state": "responded",
+      "summary": "Status call succeeded: 42 definitions, 3 installed language servers (Deno, SourceKit, clangd), 0 active clients. Definitions are not installations.",
+      "checked_at": "2026-09-25T02:09:27.343Z"
+    },
+    {
+      "name": "confluence",
+      "state": "not_configured",
+      "summary": "Status call succeeded; no Confluence connection configured.",
+      "checked_at": "2026-09-25T02:09:27.343Z"
+    },
+    {
+      "name": "gemini_notebook_mcp",
+      "state": "auth_passed",
+      "summary": "Server auth probe passed (up to 30-second cache). Version 0.10.1; server reports 0.12.0 available. Provider/account capabilities not probed. Optional update: uv tool upgrade notebooklm-mcp-cli",
+      "checked_at": "2026-09-25T02:09:27.343Z"
+    }
+  ]
+}
