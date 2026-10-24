@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SMALL GODS</title>
+<style>
+  html,body{margin:0;height:100%;background:#0b0a10;overflow:hidden;font-family:ui-monospace,Menlo,monospace}
+  canvas{display:block;width:100vw;height:100vh;cursor:crosshair}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+"use strict";
+// SMALL GODS: a rent-controlled walk-up of forgotten deities. Move the mouse; click to knock.
+const cv = document.getElementById("c"), g = cv.getContext("2d");
+let W, H, DPR;
+const mouse = { x: -999, y: -999 };
+const state = { started: false, rent: 0, bubble: null, daysLeft: 30 };
+const NEAR_RADIUS = 260;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+function resize() {
+  DPR = window.devicePixelRatio || 1;
+  W = innerWidth; H = innerHeight;
+  cv.width = W * DPR; cv.height = H * DPR;
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+addEventListener("resize", resize); resize();
+addEventListener("pointermove", e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+
+// ---------- audio: each god has a voice whose volume follows the cursor ----------
+let ac, master;
+function noiseBuffer() {
+  const b = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  return b;
+}
+function voice(setup) { // returns {gain, tick(t)}
+  const gain = ac.createGain(); gain.gain.value = 0; gain.connect(master);
+  return { gain, tick: setup(gain) || (() => {}) };
+}
+function osc(type, f, dest) { const o = ac.createOscillator(); o.type = type; o.frequency.value = f; o.connect(dest); o.start(); return o; }
+function noise(dest, filterType, f, q = 1) {
+  const s = ac.createBufferSource(); s.buffer = noiseBuffer(); s.loop = true;
+  const fl = ac.createBiquadFilter(); fl.type = filterType; fl.frequency.value = f; fl.Q.value = q;
+  s.connect(fl); fl.connect(dest); s.start(); return fl;
+}
+function blip(dest, f, dur, type = "square", vol = 0.4) {
+  const o = ac.createOscillator(), e = ac.createGain(), t = ac.currentTime;
+  o.type = type; o.frequency.value = f; e.gain.setValueAtTime(vol, t);
+  e.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(e); e.connect(dest); o.start(t); o.stop(t + dur);
+}
+function knock() {
+  const t = ac.currentTime;
+  for (let i = 0; i < 3; i++) {
+    const o = ac.createOscillator(), e = ac.createGain(), s = t + i * 0.14;
+    o.frequency.setValueAtTime(140, s); o.frequency.exponentialRampToValueAtTime(50, s + 0.1);
+    e.gain.setValueAtTime(0.7, s); e.gain.exponentialRampToValueAtTime(0.001, s + 0.12);
+    o.connect(e); e.connect(master); o.start(s); o.stop(s + 0.13);
+  }
+}
+
+// ---------- the tenants ----------
+// draw(x,y,w,h,t,near) paints inside the room; audio(gain) builds the voice and returns tick(t,near).
+const units = [
+  { id: "4A", name: "The Last Blockbuster Aisle", lines: ["Late fees are not a suggestion.", "Be kind. Rewind. Pay."], fee: 0,
+    draw(x, y, w, h, t, n) {
+      this.fee += 0.011 * (1 + n * 3);
+      for (let i = 0; i < 2; i++) { // two spinning reels
+        const cx = x + w * (0.3 + i * 0.4), cy = y + h * 0.5, r = h * 0.28;
+        g.strokeStyle = "#f5c242"; g.lineWidth = 3; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.stroke();
+        for (let k = 0; k < 3; k++) {
+          const a = t * (1.2 + n * 3) * (i ? -1 : 1) + k * 2.094;
+          g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); g.stroke();
+        }
+      }
+      g.fillStyle = "#f5c242"; g.font = "bold 14px monospace";
+      g.fillText("LATE FEE $" + this.fee.toFixed(2), x + 12, y + h - 10);
+    },
+    audio(out) { noise(out, "bandpass", 5000, 0.6); let last = 0;
+      return t => { if (Math.floor(units[0].fee / 5) !== last) { last = Math.floor(units[0].fee / 5); blip(out, 1320, 0.4, "sine", 0.5); } }; } },
+  { id: "3C", name: "Dez, Wi-Fi Dead Zone", lines: ["can you hear m—", "i'm literally right her—", "[buffering]"],
+    draw(x, y, w, h, t, n) {
+      const sig = Math.sin(t * 1.7) + Math.sin(t * 4.3) * 0.6 - n * 0.4; // drops out near the mouse
+      const bars = clamp(Math.floor((sig + 1.2) * 2), 0, 4);
+      for (let i = 0; i < 4; i++) {
+        g.fillStyle = i < bars ? "#7df9ff" : "#2a2f3d";
+        g.fillRect(x + 14 + i * 14, y + h - 14 - (i + 1) * 12, 10, (i + 1) * 12);
+      }
+      const msg = "can you hear me now", cut = bars === 0 ? "[buffering" + ".".repeat(1 + Math.floor(t * 3) % 3) + "]" : msg.slice(0, Math.floor(msg.length * (bars / 4))) + (bars < 4 ? "—" : "");
+      g.fillStyle = "#7df9ff"; g.font = "14px monospace"; g.fillText(cut, x + 90, y + h * 0.5);
+      this.bars = bars;
+    },
+    audio(out) { noise(out, "highpass", 1800, 4);
+      return () => { if (units[1].bars === 0 && Math.random() < 0.08) blip(out, 300 + Math.random() * 2000, 0.05, "sawtooth", 0.2); }; } },
+  { id: "2B", name: "The 3 A.M. Fridge Light", lines: ["you already know.", "send the email.", "it's been four days."],
+    draw(x, y, w, h, t, n) {
+      const a = 0.12 + n * 0.7 + Math.sin(t * 2) * 0.03;
+      const gr = g.createLinearGradient(x, y, x + w, y);
+      gr.addColorStop(0, `rgba(210,240,255,${a})`); gr.addColorStop(1, "rgba(210,240,255,0)");
+      g.fillStyle = gr; g.beginPath(); g.moveTo(x, y + h * 0.35); g.lineTo(x + w, y); g.lineTo(x + w, y + h); g.lineTo(x, y + h * 0.65); g.fill();
+      g.fillStyle = "#e8f6ff"; g.fillRect(x + 8, y + h * 0.3, 8, h * 0.4); // the open door
+      const confess = ["you already know.", "send the email.", "it's been four days."];
+      g.font = "15px monospace";
+      confess.forEach((s, i) => { g.fillStyle = `rgba(232,246,255,${clamp(n * 2 - i * 0.5, 0, 1)})`; g.fillText(s, x + 40, y + h * 0.38 + i * 20); });
+    },
+    audio(out) { osc("sine", 55, out); osc("sine", 110.4, out); noise(out, "lowpass", 300); } },
+  { id: "1A", name: "Gary, God of Parking Tickets", lines: ["I'm very well-respected.", "I was feared in 1974.", "The app doesn't even read them."], tickets: 4,
+    draw(x, y, w, h, t, n) {
+      if (Math.random() < 0.01 + n * 0.05 && this.tickets < 24) this.tickets++;
+      g.fillStyle = "#9aa4b2"; g.fillRect(x + w - 40, y + 14, 14, h - 30); // the meter
+      g.fillStyle = "#c33"; g.fillRect(x + w - 44, y + 10, 22, 14);
+      for (let i = 0; i < this.tickets; i++) {
+        const jx = n * Math.sin(t * 30 + i) * 3, px = x + 14 + (i % 8) * 28 + jx, py = y + 20 + Math.floor(i / 8) * 26;
+        g.fillStyle = i % 2 ? "#ffe08a" : "#fff3bf"; g.fillRect(px, py, 22, 16);
+        g.fillStyle = "#b45"; g.fillRect(px + 3, py + 3, 12, 2);
+      }
+      g.fillStyle = "#ffe08a"; g.font = "13px monospace"; g.fillText(this.tickets + " ISSUED. 0 READ.", x + 14, y + h - 8);
+    },
+    audio(out) { let next = 0; return t => { if (t > next) { blip(out, 1800, 0.03, "square", 0.3); next = t + 1; } }; } },
+  { id: "B", name: "Something Without a Name", lines: ["...", "(an envelope slides out)", "leave the light on."], lit: 0,
+    draw(x, y, w, h, t, n) {
+      this.lit = Math.max(0, this.lit - 0.004);
+      const dark = 1 - this.lit;
+      g.fillStyle = `rgba(0,0,0,${0.55 * dark})`; g.fillRect(x, y, w, h);
+      const env = clamp(n * 1.6 - 0.2, 0, 1); // envelope appears when you come near
+      g.fillStyle = `rgba(240,230,200,${0.15 + env})`; g.fillRect(x + w * 0.62 - env * 30, y + h * 0.55, 56, 34);
+      g.strokeStyle = `rgba(150,130,90,${0.2 + env})`; g.strokeRect(x + w * 0.62 - env * 30, y + h * 0.55, 56, 34);
+      g.fillStyle = `rgba(240,230,200,${env})`; g.font = "13px monospace"; g.fillText("$1,850 exact", x + w * 0.62 - env * 30, y + h * 0.55 - 6);
+      const ex = x + 24, ey = y + h * 0.4, blink = Math.sin(t * 0.7) > 0.95 ? 0 : 1; // eyes in the corner
+      g.fillStyle = `rgba(255,220,120,${0.25 * dark * blink + 0.05})`;
+      g.fillRect(ex, ey, 6, 3); g.fillRect(ex + 16, ey, 6, 3);
+    },
+    audio(out) { osc("sine", 41, out); osc("sine", 41.7, out); } }
+];
+
+// ---------- layout ----------
+function layout() {
+  const bw = Math.min(W * 0.86, 820), bx = (W - bw) / 2, top = 70, rowH = Math.min((H - top - 30) / units.length, 150);
+  units.forEach((u, i) => { u.x = bx; u.y = top + i * rowH; u.w = bw; u.h = rowH - 8; });
+}
+
+// ---------- main loop ----------
+let t0 = performance.now();
+function frame(now) {
+  const t = (now - t0) / 1000; layout();
+  g.fillStyle = "#0b0a10"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#e9e4f5"; g.font = "bold 22px monospace"; g.fillText("SMALL GODS", units[0].x, 38);
+  g.fillStyle = "#8f89a6"; g.font = "13px monospace";
+  g.fillText(`${state.daysLeft} days to keep the building solvent  ·  rent collected: $${state.rent.toLocaleString()}`, units[0].x, 58);
+  for (const u of units) {
+    const cx = u.x + u.w / 2, cy = u.y + u.h / 2;
+    const near = clamp(1 - Math.hypot(mouse.x - cx, mouse.y - cy) / NEAR_RADIUS, 0, 1);
+    g.fillStyle = "#1a1620"; g.fillRect(u.x, u.y, u.w, u.h); // brick
+    g.fillStyle = "#14111a"; g.fillRect(u.x + 6, u.y + 6, u.w - 12, u.h - 12);
+    g.save(); g.beginPath(); g.rect(u.x + 6, u.y + 6, u.w - 12, u.h - 12); g.clip();
+    u.draw(u.x + 6, u.y + 6, u.w - 12, u.h - 12, t, near);
+    g.restore();
+    g.fillStyle = `rgba(233,228,245,${0.45 + near * 0.55})`; g.font = "12px monospace";
+    g.fillText(`${u.id} · ${u.name}`, u.x + 12, u.y + 18);
+    if (u.v) { u.v.gain.gain.setTargetAtTime(0.02 + near * near * 0.35, ac.currentTime, 0.1); u.v.tick(ac.currentTime); }
+  }
+  if (state.bubble && now < state.bubble.until) {
+    const b = state.bubble; g.font = "15px monospace";
+    const tw = g.measureText(b.text).width + 24;
+    const bx = clamp(mouse.x - tw / 2, 8, W - tw - 8), by = clamp(mouse.y - 52, 8, H - 40);
+    g.fillStyle = "#f5f1ff"; g.fillRect(bx, by, tw, 30);
+    g.fillStyle = "#14111a"; g.fillText(b.text, bx + 12, by + 20);
+  }
+  if (!state.started) {
+    g.fillStyle = "rgba(11,10,16,0.82)"; g.fillRect(0, 0, W, H);
+    g.fillStyle = "#e9e4f5"; g.font = "bold 28px monospace"; g.textAlign = "center";
+    g.fillText("SMALL GODS", W / 2, H / 2 - 24);
+    g.font = "15px monospace"; g.fillStyle = "#8f89a6";
+    g.fillText("You inherited a building. The tenants are gods. None have paid rent.", W / 2, H / 2 + 8);
+    g.fillText("Click to start (sound on). Move around. Knock on doors.", W / 2, H / 2 + 32);
+    g.textAlign = "left";
+  }
+  requestAnimationFrame(frame);
+}
+
+// ---------- input ----------
+function start() {
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+  master = ac.createGain(); master.gain.value = 0.5; master.connect(ac.destination);
+  units.forEach(u => { u.v = voice(u.audio); });
+  state.started = true;
+}
+addEventListener("pointerdown", e => {
+  if (!state.started) { start(); return; }
+  const u = units.find(u => e.clientX >= u.x && e.clientX <= u.x + u.w && e.clientY >= u.y && e.clientY <= u.y + u.h);
+  if (!u) return;
+  knock();
+  let text;
+  if (u.id === "B") { state.rent += 1850; u.lit = 1; text = "(rent: $1,850. exactly. on time.)"; }
+  else text = u.lines[Math.floor(Math.random() * u.lines.length)] + "  [rent: $0, 'Friday']";
+  state.bubble = { text, until: performance.now() + 3200 };
+  state.daysLeft = Math.max(0, state.daysLeft - 1);
+});
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
