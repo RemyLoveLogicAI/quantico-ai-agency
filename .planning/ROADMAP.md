@@ -90,3 +90,55 @@ Follow-ups for A1:
 - `run_shell`/`run_shell_bg` writes aren't covered by write claims (same gap in Python). Needs declared output paths or a sandbox per child. (PR #7: Copilot, Codex)
 - The wiki curator writes through its own `WorkspaceTools`, outside write claims. This predates A1. (PR #7: Sourcery, CodeAnt)
 - `COPY ... TO` inside the `sql` tool writes files without registering a write claim, like shell writes. (PR #9: CodeAnt)
+
+---
+
+## Milestone: v0.4 — Frontier Capabilities
+
+Premise: the engine now assumes frontier models — native document reading, 1M-token
+context, structured tool output, agentic browsing. Several v0.3 items were designed
+around limits that no longer bind. A3–A6 are superseded as noted.
+
+| Phase | Req | Title | Estimate | Status |
+|-------|-----|-------|----------|--------|
+| F1 | R21 | Document intelligence: PDF + scanned ingestion with page/span provenance | 3–4 days | pending |
+| F2 | R22 | Evals as a product surface: gold cases, replay regression, rubric judge | 2–3 days | pending |
+| F3 | R23 | Claim graph as the substrate (supersedes A3) | 3 days | pending |
+| F4 | R24 | Agentic acquisition: browser-driven sources without APIs | 3–5 days | pending |
+| F5 | R25 | Long-context mode + serve op-core over MCP (supersedes A6) | 2–3 days | pending |
+
+**Ordering rationale:** F2 first if trust matters most — nothing else is verifiable
+without a scoreboard. F1 first if coverage matters most — the evidence store currently
+cannot read the formats most evidence arrives in. F3 depends on neither but improves
+both. A4 (entity resolution) remains valid and slots after F3, since resolution
+decisions become claims.
+
+### Acceptance criteria
+
+- **F1:** `ingest_file` accepts .pdf (text and scanned); `_sources` carries page and
+  character-span offsets; a claim cites a page; a scanned filing ingests end to end.
+- **F2:** ≥10 gold cases with known answers; `cargo test --test evals` scores precision
+  and recall; the rubric judge replaces keyword overlap; a regression drops the score.
+- **F3:** claims are extracted through a structured tool schema, not markdown parsing;
+  graph, wiki and report all render from the claims table; every claim joins to a source.
+- **F4:** at least one API-less source (a state registry or county portal) ingests
+  through a browser agent, with provenance equal to an API fetch.
+- **F5:** op-core serves MCP with the evidence tools exposed; an external agent runs an
+  investigation end to end; compaction heuristics removed in favour of long context.
+
+### Kill list
+
+1. The keyword-overlap judge — replaced by F2's rubric judge.
+2. The Bun `quantico-ai/` gateway — dead placeholder, superseded by F5.
+3. Wiki markdown as the source of truth — becomes a view over claims (F3).
+4. Context compaction tuning in `engine/mod.rs` — mostly moot under F5.
+
+### Engineering debt blocking release (not feature work)
+
+| Item | Why it blocks | Estimate |
+|------|---------------|----------|
+| Test CI on PRs (cargo, pytest, vitest) | PR bots are the only gate today | 2 hours |
+| macOS signing, notarization, updater | users get "damaged app", no update path | 1 day |
+| One real-provider runtime check | every check to date used a scripted mock | 1 hour + key |
+| Per-run token/cost budget | recursion with parallel children is unbounded spend | 4 hours |
+
